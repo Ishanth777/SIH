@@ -1,0 +1,142 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  # ── Lint & Type Check ───────────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter api prisma:generate
+
+      - name: Type check API
+        run: pnpm --filter api build
+
+      - name: Type check shared-types
+        run: pnpm --filter shared-types build
+
+  # ── Unit & Integration Tests ────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: lint
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_USER: coop_user
+          POSTGRES_PASSWORD: coop_password
+          POSTGRES_DB: coop_marketplace
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coop_user -d coop_marketplace"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_ACCESS_SECRET: ci-test-access-secret-minimum-16-chars
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-minimum-16-chars
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      NODE_ENV: test
+      API_PORT: 3000
+      API_PREFIX: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter api prisma:generate
+
+      - name: Run database migrations
+        run: pnpm --filter api prisma:migrate
+        env:
+          DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
+
+      - name: Apply RLS policies
+        run: |
+          PGPASSWORD=coop_password psql -h localhost -U coop_user -d coop_marketplace \
+            -f infra/docker/init-scripts/02-rls-policies.sql
+
+      - name: Run unit tests
+        run: pnpm --filter api test
+
+      - name: Run integration tests (includes RLS cross-tenant test)
+        run: pnpm --filter api test:e2e
+
+  # ── Security Audit ──────────────────────────────────────────
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Node Audit (rule S4)
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run Python Audit (rule S4)
+        run: pip-audit -r apps/forecasting/requirements.txt

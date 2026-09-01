@@ -1,0 +1,30 @@
+{
+  "name": "coop-labour-marketplace",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Cooperative Labour Marketplace — multi-tenant platform connecting cooperative societies with workers and customers",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "api:dev": "pnpm --filter api dev",
+    "api:build": "pnpm --filter api build",
+    "api:test": "pnpm --filter api test",
+    "api:test:e2e": "pnpm --filter api test:e2e",
+    "api:lint": "pnpm --filter api lint",
+    "web:dev": "pnpm --filter web dev",
+    "web:build": "pnpm --filter web build",
+    "mobile:dev": "pnpm --filter mobile start",
+    "prisma:generate": "pnpm --filter api prisma:generate",
+    "prisma:migrate": "pnpm --filter api prisma:migrate",
+    "prisma:studio": "pnpm --filter api prisma:studio",
+    "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r exec -- rm -rf dist node_modules .next .expo"
+  }
+}

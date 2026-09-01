@@ -1,0 +1,393 @@
+// ============================================================
+// Prisma Schema — Cooperative Labour Marketplace
+// ============================================================
+// Per rule B5: Prisma is the ORM. Raw SQL only for PostGIS
+// queries and RLS session variable setting.
+// ============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pgcrypto]
+}
+
+// ── Enums ──────────────────────────────────────────────────────
+
+enum Role {
+  FEDERATION_ADMIN
+  SOCIETY_ADMIN
+  WORKER
+  CUSTOMER
+}
+
+enum VerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum JobStatus {
+  PENDING
+  MATCHED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum ServiceCategory {
+  ELECTRICIAN
+  PLUMBER
+  CLEANER
+  CAREGIVER
+}
+
+enum RequestType {
+  SCHEDULED
+  EMERGENCY
+}
+
+enum DisputeType {
+  RATING
+  PAYMENT
+  SERVICE_QUALITY
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  ESCALATED
+}
+
+// ── Foundation Models ──────────────────────────────────────────
+
+/// Top of the tenancy hierarchy (rule T4)
+model Federation {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  logoUrl     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cooperatives CooperativeSociety[]
+  users        User[]
+
+  @@map("federations")
+}
+
+/// Child of Federation. Tenant unit for RLS (rule A1, T1)
+model CooperativeSociety {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  federationId String @db.Uuid
+  name         String
+  description  String?
+  address      String?
+  registrationNumber String? @unique
+
+  // PostGIS point for cooperative headquarters location (rule A2)
+  // Stored as raw lat/lng; PostGIS queries use ST_DWithin
+  latitude  Float?
+  longitude Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  federation Federation @relation(fields: [federationId], references: [id])
+  workers    Worker[]
+  customers  Customer[]
+  users      User[]
+  serviceRequests ServiceRequest[]
+  jobs       Job[]
+
+  @@map("cooperative_societies")
+}
+
+/// Unified user model for auth — holds phone, role, and tenant binding
+model User {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone          String @unique
+  role           Role
+  cooperativeId  String? @db.Uuid
+  federationId   String? @db.Uuid
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cooperative CooperativeSociety? @relation(fields: [cooperativeId], references: [id])
+  federation  Federation?         @relation(fields: [federationId], references: [id])
+  worker      Worker?
+  customer    Customer?
+  otps        Otp[]
+
+  @@map("users")
+}
+
+/// OTP store for phone verification (short-lived, cleaned up by TTL)
+model Otp {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, code])
+  @@map("otps")
+}
+
+// ── Domain Models ──────────────────────────────────────────────
+
+/// Worker profile — linked to a User with role WORKER
+model Worker {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String             @unique @db.Uuid
+  cooperativeId  String             @db.Uuid
+  name           String
+  skills         ServiceCategory[]
+  isAvailable    Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+
+  // KYC document references — stored in object storage (rule A6)
+  kycDocumentUrls String[]
+
+  // Location for geo-matching (rule A2)
+  latitude  Float?
+  longitude Float?
+
+  // Earnings & ratings
+  averageRating Float   @default(0)
+  totalEarnings Float   @default(0)
+  totalJobs     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User               @relation(fields: [userId], references: [id])
+  cooperative CooperativeSociety @relation(fields: [cooperativeId], references: [id])
+  jobs        Job[]
+  ratings     Rating[]
+  welfareEnrollments WelfareEnrollment[]
+
+  @@map("workers")
+}
+
+/// Customer profile — linked to a User with role CUSTOMER
+model Customer {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String @unique @db.Uuid
+  cooperativeId String @db.Uuid
+  name          String
+  email         String?
+
+  // Address book
+  addresses CustomerAddress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User               @relation(fields: [userId], references: [id])
+  cooperative     CooperativeSociety @relation(fields: [cooperativeId], references: [id])
+  serviceRequests ServiceRequest[]
+  ratings         Rating[]
+
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId String @db.Uuid
+  label      String   // e.g., "Home", "Office"
+  address    String
+  latitude   Float
+  longitude  Float
+  isDefault  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("customer_addresses")
+}
+
+// ── Service Catalog ────────────────────────────────────────────
+
+/// Fixed service categories with fair-wage base rates
+model ServiceCatalog {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category    ServiceCategory @unique
+  name        String
+  description String?
+  baseRateMin Float           // Minimum fair-wage rate
+  baseRateMax Float           // Maximum fair-wage rate
+  unit        String          @default("per_hour") // per_hour, per_job
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceRequests ServiceRequest[]
+
+  @@map("service_catalog")
+}
+
+// ── Service Requests & Jobs ────────────────────────────────────
+
+/// Customer creates a service request (scheduled or emergency)
+model ServiceRequest {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId     String          @db.Uuid
+  cooperativeId  String          @db.Uuid
+  serviceCatalogId String        @db.Uuid
+  type           RequestType
+  description    String?
+  latitude       Float
+  longitude      Float
+  address        String
+  scheduledAt    DateTime?       // null for emergency/on-demand
+  estimatedHours Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer       Customer           @relation(fields: [customerId], references: [id])
+  cooperative    CooperativeSociety @relation(fields: [cooperativeId], references: [id])
+  serviceCatalog ServiceCatalog     @relation(fields: [serviceCatalogId], references: [id])
+  job            Job?
+
+  @@map("service_requests")
+}
+
+/// Job lifecycle: accept/reject/in-progress/complete
+model Job {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceRequestId String    @unique @db.Uuid
+  workerId         String?   @db.Uuid
+  cooperativeId    String    @db.Uuid
+  status           JobStatus @default(PENDING)
+  agreedRate       Float?
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceRequest ServiceRequest     @relation(fields: [serviceRequestId], references: [id])
+  worker         Worker?            @relation(fields: [workerId], references: [id])
+  cooperative    CooperativeSociety @relation(fields: [cooperativeId], references: [id])
+  payment        Payment?
+  rating         Rating?
+  disputes       Dispute[]
+
+  @@map("jobs")
+}
+
+// ── Payments ───────────────────────────────────────────────────
+
+/// Payment per job — idempotent by jobId (rule A5)
+model Payment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId           String        @unique @db.Uuid
+  amount          Float
+  currency        String        @default("INR")
+  status          PaymentStatus @default(PENDING)
+  gatewayOrderId  String?       @unique  // Razorpay order ID
+  gatewayPaymentId String?      @unique  // Razorpay payment ID
+  gatewaySignature String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@map("payments")
+}
+
+// ── Ratings ────────────────────────────────────────────────────
+
+model Rating {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId      String @unique @db.Uuid
+  customerId String @db.Uuid
+  workerId   String @db.Uuid
+  score      Int    // 1-5
+  comment    String?
+
+  createdAt DateTime @default(now())
+
+  job      Job      @relation(fields: [jobId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  worker   Worker   @relation(fields: [workerId], references: [id])
+
+  @@map("ratings")
+}
+
+// ── Welfare ────────────────────────────────────────────────────
+
+model WelfareScheme {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  provider    String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollments WelfareEnrollment[]
+
+  @@map("welfare_schemes")
+}
+
+model WelfareEnrollment {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId  String @db.Uuid
+  schemeId  String @db.Uuid
+  enrolledAt DateTime @default(now())
+  status     String @default("active") // active, expired, cancelled
+
+  worker Worker        @relation(fields: [workerId], references: [id])
+  scheme WelfareScheme @relation(fields: [schemeId], references: [id])
+
+  @@unique([workerId, schemeId])
+  @@map("welfare_enrollments")
+}
+
+// ── Disputes ───────────────────────────────────────────────────
+
+model Dispute {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId       String        @db.Uuid
+  type        DisputeType
+  status      DisputeStatus @default(OPEN)
+  description String
+  resolution  String?
+  raisedBy    String        @db.Uuid  // userId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@map("disputes")
+}
