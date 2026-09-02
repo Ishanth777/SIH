@@ -9,13 +9,13 @@ import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
 
 @ApiTags('services-catalog')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('services-catalog')
 export class ServicesCatalogController {
   constructor(private readonly servicesCatalogService: ServicesCatalogService) {}
 
   @Post()
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('FEDERATION_ADMIN')
   @ApiOperation({ summary: 'Create service catalog entry' })
   @ApiResponse({ status: 201, description: 'Created' })
@@ -24,19 +24,20 @@ export class ServicesCatalogController {
   }
 
   @Get()
-  // Any authenticated user can view the catalog
-  @ApiOperation({ summary: 'List all service catalog entries' })
+  @ApiOperation({ summary: 'List all service catalog entries (Public for booking)' })
   findAll() {
     return this.servicesCatalogService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get service catalog entry by ID' })
+  @ApiOperation({ summary: 'Get service catalog entry by ID (Public)' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.servicesCatalogService.findOne(id);
   }
 
   @Patch(':id')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('FEDERATION_ADMIN')
   @ApiOperation({ summary: 'Update service catalog entry' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateServiceCatalogDto) {
@@ -44,6 +45,8 @@ export class ServicesCatalogController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('FEDERATION_ADMIN')
   @ApiOperation({ summary: 'Delete service catalog entry' })
   remove(@Param('id', ParseUUIDPipe) id: string) {

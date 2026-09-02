@@ -37,16 +37,36 @@ export class EventsGateway
   constructor(private readonly config: ConfigService<EnvConfig, true>) {}
 
   async afterInit(server: any): Promise<void> { // eslint-disable-line @typescript-eslint/no-explicit-any
-    // Set up Redis adapter (rule A10)
-    const redisHost = this.config.get('REDIS_HOST', { infer: true });
-    const redisPort = this.config.get('REDIS_PORT', { infer: true });
+    try {
+      const redisHost = this.config.get('REDIS_HOST', { infer: true });
+      const redisPort = this.config.get('REDIS_PORT', { infer: true });
 
-    const pubClient = new Redis({ host: redisHost, port: redisPort });
-    const subClient = pubClient.duplicate();
+      const pubClient = new Redis({
+        host: redisHost,
+        port: redisPort,
+        lazyConnect: true,
+        retryStrategy: () => null, // Don't crash if Redis is unavailable in local dev
+      });
 
-    server.adapter(createAdapter(pubClient, subClient));
+      pubClient.on('error', (err) => {
+        this.logger.warn(`Redis adapter connection issue: ${err.message}`);
+      });
 
-    this.logger.log('Socket.IO initialized with Redis adapter');
+      const subClient = pubClient.duplicate();
+      subClient.on('error', (err) => {
+        this.logger.warn(`Redis adapter sub connection issue: ${err.message}`);
+      });
+
+      const ioServer = typeof server.adapter === 'function' ? server : server?.server;
+      if (ioServer && typeof ioServer.adapter === 'function') {
+        ioServer.adapter(createAdapter(pubClient, subClient));
+        this.logger.log('Socket.IO initialized with Redis adapter');
+      } else {
+        this.logger.log('Socket.IO initialized with in-memory adapter');
+      }
+    } catch (err: any) {
+      this.logger.warn(`Socket.IO fallback to default adapter: ${err.message}`);
+    }
   }
 
   handleConnection(client: { id: string }): void {
