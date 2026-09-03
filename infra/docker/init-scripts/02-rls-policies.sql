@@ -28,6 +28,7 @@ $$ LANGUAGE plpgsql STABLE;
 ALTER TABLE cooperative_societies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customer_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
@@ -42,10 +43,10 @@ ALTER TABLE welfare_enrollments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY cooperative_isolation ON cooperative_societies
   USING (
     -- Federation admin: sees all cooperatives in their federation
-    current_federation_id() IS NOT NULL AND federation_id = current_federation_id()
+    (current_federation_id() IS NOT NULL AND federation_id = current_federation_id())
     OR
     -- Society admin/worker/customer: sees only their cooperative
-    id = current_cooperative_id()
+    (current_cooperative_id() IS NOT NULL AND id = current_cooperative_id())
   );
 
 -- ── Workers ────────────────────────────────────────────────
@@ -59,6 +60,16 @@ CREATE POLICY worker_isolation ON workers
 
 CREATE POLICY customer_isolation ON customers
   USING (cooperative_id = current_cooperative_id());
+
+-- ── Customer Addresses ─────────────────────────────────────
+-- Scoped through customer, which is cooperative-scoped.
+
+CREATE POLICY customer_address_isolation ON customer_addresses
+  USING (
+    customer_id IN (
+      SELECT id FROM customers WHERE cooperative_id = current_cooperative_id()
+    )
+  );
 
 -- ── Service Requests ───────────────────────────────────────
 -- Scoped by cooperative_id
@@ -118,6 +129,7 @@ CREATE POLICY welfare_enrollment_isolation ON welfare_enrollments
 ALTER TABLE cooperative_societies FORCE ROW LEVEL SECURITY;
 ALTER TABLE workers FORCE ROW LEVEL SECURITY;
 ALTER TABLE customers FORCE ROW LEVEL SECURITY;
+ALTER TABLE customer_addresses FORCE ROW LEVEL SECURITY;
 ALTER TABLE service_requests FORCE ROW LEVEL SECURITY;
 ALTER TABLE jobs FORCE ROW LEVEL SECURITY;
 ALTER TABLE payments FORCE ROW LEVEL SECURITY;
