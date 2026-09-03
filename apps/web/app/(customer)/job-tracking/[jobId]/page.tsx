@@ -12,7 +12,7 @@ export default function JobTrackingPage({ params }: { params: { jobId: string } 
     
     socket.emit('job:join_room', { jobId: params.jobId });
 
-    socket.on('job:status', (data) => {
+    socket.on('job:status', (data: { jobId: string; status: string }) => {
       if (data.jobId === params.jobId) {
         setJobStatus(data.status);
       }
