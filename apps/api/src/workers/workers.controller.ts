@@ -1,9 +1,11 @@
 import {
   Controller, Get, Post, Patch, Body, Param, Query,
-  UseGuards, ParseUUIDPipe,
+  UseGuards, ParseUUIDPipe, UseInterceptors, UploadedFile, BadRequestException
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { WorkersService } from './workers.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 import { RegisterWorkerDto, UpdateWorkerDto, VerifyWorkerDto } from './dto';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
@@ -13,7 +15,10 @@ import { Roles } from '../auth/decorators';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('workers')
 export class WorkersController {
-  constructor(private readonly workersService: WorkersService) {}
+  constructor(
+    private readonly workersService: WorkersService,
+    private readonly fileUploadService: FileUploadService
+  ) {}
 
   @Post('register')
   @Roles('SOCIETY_ADMIN', 'FEDERATION_ADMIN')
@@ -87,4 +92,37 @@ export class WorkersController {
   ) {
     return this.workersService.updateLocation(id, latitude, longitude);
   }
+
+  @Post(':id/kyc-upload')
+  @Roles('WORKER', 'SOCIETY_ADMIN', 'FEDERATION_ADMIN')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload KYC document for worker' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async uploadKycDocument(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    const fileUrl = await this.fileUploadService.uploadFile(file, 'kyc');
+    
+    // We should probably update the worker's kycDocumentUrls here if needed,
+    // or just return the URL so the frontend can submit it via the verify endpoint.
+    return { url: fileUrl };
+  }
 }
+
+
+

@@ -28,11 +28,17 @@
     "clean": "pnpm -r exec -- rm -rf dist node_modules .next .expo"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
+    "@nestjs/platform-express": "^10.4.15",
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
     "@types/react-native": "^0.72.8",
+    "multer": "^2.3.0",
     "react": "^19.2.8",
     "react-native": "^0.87.1",
     "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/multer": "^2.2.0"
   }
 }
