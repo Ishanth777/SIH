@@ -205,14 +205,9 @@ jobs:
         run: docker build -t coop-forecasting:ci -f apps/forecasting/Dockerfile apps/forecasting
 
       - name: "Run Trivy Scan on Forecasting Image"
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: coop-forecasting:ci
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 0 coop-forecasting:ci
 
   # ── Staging Deployment Gate ─────────────────────────────────
   deploy-staging:
