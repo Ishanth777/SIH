@@ -30,6 +30,7 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  Info,
 } from 'lucide-react';
 
 // Fallback demo data for when DB is unseeded or API is offline
@@ -231,7 +232,7 @@ export default function FederationDashboardPage() {
       {/* ── Top Navigation Bar ──────────────────────────────── */}
       <header style={{
         borderBottom: '1px solid var(--border-subtle)',
-        background: 'rgba(9, 13, 22, 0.85)',
+        background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(16px)',
         position: 'sticky',
         top: 0,
@@ -298,14 +299,19 @@ export default function FederationDashboardPage() {
       {/* Demo Mode Notice */}
       {isDemoMode && (
         <div style={{
-          background: 'rgba(99, 102, 241, 0.12)',
-          borderBottom: '1px solid rgba(99, 102, 241, 0.25)',
+          background: '#eef2ff',
+          borderBottom: '1px solid #c7d2fe',
           padding: '8px 24px',
           textAlign: 'center',
           fontSize: '12px',
-          color: '#c7d2fe',
+          color: '#4338ca',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
         }}>
-          💡 <strong>Live Simulation Mode:</strong> Connected to live state. All analytics queries strictly map to <code>GET /analytics/federation/:id</code> and <code>GET /cooperatives</code>.
+          <Info size={14} style={{ flexShrink: 0 }} />
+          <span><strong>Live Simulation Mode:</strong> Connected to live state. All analytics queries strictly map to <code>GET /analytics/federation/:id</code> and <code>GET /cooperatives</code>.</span>
         </div>
       )}
 
@@ -498,7 +504,7 @@ export default function FederationDashboardPage() {
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '16px', fontFamily: 'var(--font-mono)', fontSize: '13px', color: '#cbd5e1' }}>
+                    <td style={{ padding: '16px', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>
                       {coop.registrationNumber || 'Pending Reg'}
                     </td>
                     <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '13px', maxWidth: '280px' }}>
@@ -544,7 +550,7 @@ export default function FederationDashboardPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
+          background: 'rgba(15, 23, 42, 0.45)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -556,8 +562,9 @@ export default function FederationDashboardPage() {
             maxWidth: '640px',
             width: '100%',
             padding: '32px',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(16, 185, 129, 0.15)',
+            background: '#ffffff',
+            border: '1px solid var(--border-subtle)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
@@ -621,12 +628,12 @@ export default function FederationDashboardPage() {
                 </div>
 
                 <div style={{
-                  background: 'rgba(16, 185, 129, 0.06)',
-                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
                   borderRadius: 'var(--radius-sm)',
                   padding: '12px 16px',
                   fontSize: '12px',
-                  color: '#a7f3d0',
+                  color: '#047857',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
@@ -655,7 +662,7 @@ export default function FederationDashboardPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
+          background: 'rgba(15, 23, 42, 0.45)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -663,7 +670,7 @@ export default function FederationDashboardPage() {
           zIndex: 50,
           padding: '20px',
         }}>
-          <div className="glass-panel animate-fade-in" style={{ maxWidth: '520px', width: '100%', padding: '32px' }}>
+          <div className="glass-panel animate-fade-in" style={{ maxWidth: '520px', width: '100%', padding: '32px', background: '#ffffff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 800 }}>Register Member Cooperative</h3>
               <button
@@ -677,9 +684,9 @@ export default function FederationDashboardPage() {
             {modalError && (
               <div style={{
                 padding: '10px 14px',
-                background: 'rgba(244, 63, 94, 0.12)',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                color: '#fca5a5',
+                background: '#fff1f2',
+                border: '1px solid #fecdd3',
+                color: '#be123c',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '13px',
                 marginBottom: '18px',

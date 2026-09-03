@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { sendOtp, verifyOtp, storeAuth, decodeJwt } from '@/lib/api';
-import { ShieldCheck, Phone, ArrowRight, RefreshCw, KeyRound, CheckCircle2, AlertCircle, Building2 } from 'lucide-react';
+import { ShieldCheck, Phone, ArrowRight, RefreshCw, KeyRound, CheckCircle2, AlertCircle, Building2, Users, Zap } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,13 +20,14 @@ export default function LoginPage() {
   // References for OTP input auto-advance
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // 300s countdown timer for OTP
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (step === 'OTP' && timer > 0) {
       interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [step, timer]);
 
   // Handle phone submission (Step 1)
@@ -181,10 +182,10 @@ export default function LoginPage() {
             alignItems: 'flex-start',
             gap: '10px',
             padding: '12px 14px',
-            background: 'rgba(244, 63, 94, 0.12)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
+            background: '#fff1f2',
+            border: '1px solid #fecdd3',
             borderRadius: 'var(--radius-sm)',
-            color: '#fca5a5',
+            color: '#be123c',
             fontSize: '13px',
             marginBottom: '20px',
           }}>
@@ -200,10 +201,10 @@ export default function LoginPage() {
             alignItems: 'center',
             gap: '10px',
             padding: '12px 14px',
-            background: 'rgba(16, 185, 129, 0.12)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
             borderRadius: 'var(--radius-sm)',
-            color: '#6ee7b7',
+            color: '#047857',
             fontSize: '13px',
             marginBottom: '20px',
           }}>
@@ -268,17 +269,19 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => handleSelectDemoUser('+919000000001')}
                   className="btn-secondary"
-                  style={{ fontSize: '12px', padding: '8px 10px' }}
+                  style={{ fontSize: '12px', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  🏢 Federation Admin
+                  <Building2 size={14} color="var(--accent-primary)" />
+                  <span>Federation Admin</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectDemoUser('+919000000002')}
                   className="btn-secondary"
-                  style={{ fontSize: '12px', padding: '8px 10px' }}
+                  style={{ fontSize: '12px', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  🤝 Society Admin
+                  <Users size={14} color="var(--accent-secondary)" />
+                  <span>Society Admin</span>
                 </button>
               </div>
             </div>
@@ -315,15 +318,19 @@ export default function LoginPage() {
               {/* Dev mode helper hint */}
               <div style={{
                 margin: '16px 0',
-                padding: '8px 12px',
-                background: 'rgba(99, 102, 241, 0.08)',
-                border: '1px dashed rgba(99, 102, 241, 0.25)',
+                padding: '10px 14px',
+                background: '#eef2ff',
+                border: '1px dashed #c7d2fe',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '12px',
-                color: '#a5b4fc',
-                textAlign: 'center',
+                color: '#4338ca',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
               }}>
-                ⚡ Dev Hint: In development, OTP is printed to the API console logs.
+                <Zap size={14} color="#6366f1" style={{ flexShrink: 0 }} />
+                <span>Dev Hint: In development, OTP is printed to the API console logs.</span>
               </div>
 
               {/* Timer and Resend */}

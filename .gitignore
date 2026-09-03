@@ -8,13 +8,15 @@ yarn.lock
 .env
 .env.local
 .env.*.local
+*.env
 
 # Build outputs
 dist/
 build/
 .next/
-.expo/
 out/
+.expo/
+web-build/
 
 # Auto-generated AI agent docs
 AGENTS.md
@@ -25,10 +27,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 .venv/
+venv/
+env/
 *.egg-info/
 .eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# IDE
+# IDE & Editor
 .idea/
 .vscode/
 *.swp
@@ -47,19 +54,27 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Testing
+# Testing & Coverage
 coverage/
 .nyc_output/
 
-# Prisma
+# Prisma & Database
 apps/api/prisma/*.db
 apps/api/prisma/migrations/**/migration_lock.toml
 
-# Docker volumes (local dev)
+# Docker local data volumes
 infra/docker/data/
-
-# MinIO local data
 infra/docker/minio-data/
+infra/docker/postgres-data/
+infra/docker/redis-data/
+
+# Mobile / Expo keys & native builds
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
 
 # Misc
 *.tsbuildinfo

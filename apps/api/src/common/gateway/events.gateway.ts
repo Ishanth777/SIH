@@ -48,18 +48,24 @@ export class EventsGateway
       const pubClient = new Redis({
         host: redisHost,
         port: redisPort,
+        connectTimeout: 2000,
+        maxRetriesPerRequest: 1,
         lazyConnect: true,
-        retryStrategy: () => null, // Don't crash if Redis is unavailable in local dev
+        retryStrategy: () => null, // Don't loop retries if Redis is unavailable in local dev
       });
 
       pubClient.on('error', (err) => {
         this.logger.warn(`Redis adapter connection issue: ${err.message}`);
       });
 
+      // Verify connection before binding to Socket.IO adapter
+      await pubClient.connect();
+
       const subClient = pubClient.duplicate();
       subClient.on('error', (err) => {
         this.logger.warn(`Redis adapter sub connection issue: ${err.message}`);
       });
+      await subClient.connect();
 
       const ioServer = typeof server.adapter === 'function' ? server : server?.server;
       if (ioServer && typeof ioServer.adapter === 'function') {
@@ -69,7 +75,7 @@ export class EventsGateway
         this.logger.log('Socket.IO initialized with in-memory adapter');
       }
     } catch (err: any) {
-      this.logger.warn(`Socket.IO fallback to default adapter: ${err.message}`);
+      this.logger.warn(`Redis offline — Socket.IO falling back to in-memory adapter: ${err.message}`);
     }
   }
 

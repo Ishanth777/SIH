@@ -1,6 +1,6 @@
-# Cooperative Labour Marketplace — Local Development Infrastructure
+# Cooperative Labour Marketplace — Full Stack Container Orchestration
 # Run: docker compose up -d
-# Verify: docker compose ps
+# Stop: docker compose down
 
 services:
   # ── PostgreSQL + PostGIS ──────────────────────────────────────
@@ -16,10 +16,10 @@ services:
       POSTGRES_DB: coop_marketplace
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./infra/docker/init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U coop_user -d coop_marketplace"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
@@ -51,7 +51,7 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
@@ -78,12 +78,60 @@ services:
   # ── AI Forecasting Microservice (FastAPI) ─────────────────────
   forecasting:
     build:
-      context: ../../apps/forecasting
+      context: ./apps/forecasting
       dockerfile: Dockerfile
     container_name: coop-forecasting
     restart: unless-stopped
     ports:
       - "8000:8000"
+
+  # ── Backend API (NestJS + Prisma + Socket.IO) ─────────────────
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    container_name: coop-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      API_PORT: 3000
+      API_PREFIX: api
+      CORS_ORIGINS: http://localhost:3001
+      DATABASE_URL: postgresql://coop_user:coop_password@postgres:5432/coop_marketplace?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: coop-documents
+      JWT_ACCESS_SECRET: sih26089_jwt_access_super_secret_key_2026_dev
+      JWT_REFRESH_SECRET: sih26089_jwt_refresh_super_secret_key_2026_dev
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      OTP_EXPIRY_SECONDS: 300
+      OTP_LENGTH: 6
+      FORECASTING_SERVICE_URL: http://forecasting:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Web Frontend (Next.js 14 - Port 3001) ─────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    container_name: coop-web
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

@@ -20,9 +20,9 @@
     "prisma:generate": "pnpm --filter api prisma:generate",
     "prisma:migrate": "pnpm --filter api prisma:migrate",
     "prisma:studio": "pnpm --filter api prisma:studio",
-    "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
-    "docker:down": "docker compose -f infra/docker/docker-compose.yml down",
-    "docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "clean": "pnpm -r exec -- rm -rf dist node_modules .next .expo"

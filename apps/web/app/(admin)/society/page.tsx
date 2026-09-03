@@ -83,7 +83,7 @@ export default function SocietyDashboardPage() {
       {/* ── Top Header ──────────────────────────────────────── */}
       <header style={{
         borderBottom: '1px solid var(--border-subtle)',
-        background: 'rgba(9, 13, 22, 0.85)',
+        background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(16px)',
         position: 'sticky',
         top: 0,
