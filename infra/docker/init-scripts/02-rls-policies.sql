@@ -28,6 +28,7 @@ $$ LANGUAGE plpgsql STABLE;
 ALTER TABLE cooperative_societies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customer_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
@@ -42,44 +43,87 @@ ALTER TABLE welfare_enrollments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY cooperative_isolation ON cooperative_societies
   USING (
     -- Federation admin: sees all cooperatives in their federation
-    current_federation_id() IS NOT NULL AND federation_id = current_federation_id()
+    (current_federation_id() IS NOT NULL AND federation_id = current_federation_id())
     OR
     -- Society admin/worker/customer: sees only their cooperative
-    id = current_cooperative_id()
+    (current_cooperative_id() IS NOT NULL AND id = current_cooperative_id())
   );
 
 -- ── Workers ────────────────────────────────────────────────
--- Scoped by cooperative_id
+-- Scoped by cooperative_id or federation_id
 
 CREATE POLICY worker_isolation ON workers
-  USING (cooperative_id = current_cooperative_id());
+  USING (
+    (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+    OR
+    (current_federation_id() IS NOT NULL AND cooperative_id IN (
+      SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+    ))
+  );
 
 -- ── Customers ──────────────────────────────────────────────
--- Scoped by cooperative_id
+-- Scoped by cooperative_id or federation_id
 
 CREATE POLICY customer_isolation ON customers
-  USING (cooperative_id = current_cooperative_id());
+  USING (
+    (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+    OR
+    (current_federation_id() IS NOT NULL AND cooperative_id IN (
+      SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+    ))
+  );
+
+-- ── Customer Addresses ─────────────────────────────────────
+-- Scoped through customer, which is cooperative-scoped or federation-scoped.
+
+CREATE POLICY customer_address_isolation ON customer_addresses
+  USING (
+    customer_id IN (
+      SELECT id FROM customers WHERE
+        (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+        OR
+        (current_federation_id() IS NOT NULL AND cooperative_id IN (
+          SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+        ))
+    )
+  );
 
 -- ── Service Requests ───────────────────────────────────────
--- Scoped by cooperative_id
+-- Scoped by cooperative_id or federation_id
 
 CREATE POLICY service_request_isolation ON service_requests
-  USING (cooperative_id = current_cooperative_id());
+  USING (
+    (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+    OR
+    (current_federation_id() IS NOT NULL AND cooperative_id IN (
+      SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+    ))
+  );
 
 -- ── Jobs ───────────────────────────────────────────────────
--- Scoped by cooperative_id
+-- Scoped by cooperative_id or federation_id
 
 CREATE POLICY job_isolation ON jobs
-  USING (cooperative_id = current_cooperative_id());
+  USING (
+    (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+    OR
+    (current_federation_id() IS NOT NULL AND cooperative_id IN (
+      SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+    ))
+  );
 
 -- ── Payments ───────────────────────────────────────────────
--- Payments are accessed through their job, which is already scoped.
--- Additional policy ensures direct payment queries are also isolated.
+-- Payments are accessed through their job.
 
 CREATE POLICY payment_isolation ON payments
   USING (
     job_id IN (
-      SELECT id FROM jobs WHERE cooperative_id = current_cooperative_id()
+      SELECT id FROM jobs WHERE
+        (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+        OR
+        (current_federation_id() IS NOT NULL AND cooperative_id IN (
+          SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+        ))
     )
   );
 
@@ -89,7 +133,12 @@ CREATE POLICY payment_isolation ON payments
 CREATE POLICY rating_isolation ON ratings
   USING (
     job_id IN (
-      SELECT id FROM jobs WHERE cooperative_id = current_cooperative_id()
+      SELECT id FROM jobs WHERE
+        (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+        OR
+        (current_federation_id() IS NOT NULL AND cooperative_id IN (
+          SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+        ))
     )
   );
 
@@ -99,17 +148,27 @@ CREATE POLICY rating_isolation ON ratings
 CREATE POLICY dispute_isolation ON disputes
   USING (
     job_id IN (
-      SELECT id FROM jobs WHERE cooperative_id = current_cooperative_id()
+      SELECT id FROM jobs WHERE
+        (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+        OR
+        (current_federation_id() IS NOT NULL AND cooperative_id IN (
+          SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+        ))
     )
   );
 
 -- ── Welfare Enrollments ────────────────────────────────────
--- Accessed through worker, which is cooperative-scoped.
+-- Accessed through worker, which is cooperative-scoped or federation-scoped.
 
 CREATE POLICY welfare_enrollment_isolation ON welfare_enrollments
   USING (
     worker_id IN (
-      SELECT id FROM workers WHERE cooperative_id = current_cooperative_id()
+      SELECT id FROM workers WHERE
+        (current_cooperative_id() IS NOT NULL AND cooperative_id = current_cooperative_id())
+        OR
+        (current_federation_id() IS NOT NULL AND cooperative_id IN (
+          SELECT id FROM cooperative_societies WHERE federation_id = current_federation_id()
+        ))
     )
   );
 
@@ -118,6 +177,7 @@ CREATE POLICY welfare_enrollment_isolation ON welfare_enrollments
 ALTER TABLE cooperative_societies FORCE ROW LEVEL SECURITY;
 ALTER TABLE workers FORCE ROW LEVEL SECURITY;
 ALTER TABLE customers FORCE ROW LEVEL SECURITY;
+ALTER TABLE customer_addresses FORCE ROW LEVEL SECURITY;
 ALTER TABLE service_requests FORCE ROW LEVEL SECURITY;
 ALTER TABLE jobs FORCE ROW LEVEL SECURITY;
 ALTER TABLE payments FORCE ROW LEVEL SECURITY;

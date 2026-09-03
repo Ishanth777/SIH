@@ -26,20 +26,25 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   /**
    * Set the current cooperative ID on the Postgres session for RLS.
    * Per rule A1: every authenticated request must set `app.current_cooperative_id`
-   * before any query executes.
+   * before any query executes. Uses parameterized set_config to prevent SQL injection.
    */
   async setTenantContext(cooperativeId: string): Promise<void> {
-    await this.$executeRawUnsafe(
-      `SET LOCAL app.current_cooperative_id = '${cooperativeId}'`,
-    );
+    await this.$executeRaw`SELECT set_config('app.current_cooperative_id', ${cooperativeId}, true)`;
+  }
+
+  /**
+   * Set the current federation ID on the Postgres session for RLS.
+   * Enables federation-level administrative access across cooperatives.
+   * Uses parameterized set_config to prevent SQL injection.
+   */
+  async setFederationContext(federationId: string): Promise<void> {
+    await this.$executeRaw`SELECT set_config('app.current_federation_id', ${federationId}, true)`;
   }
 
   /**
    * Clear the tenant context — used in tests and between requests.
    */
   async clearTenantContext(): Promise<void> {
-    await this.$executeRawUnsafe(
-      `RESET app.current_cooperative_id`,
-    );
+    await this.$executeRaw`SELECT set_config('app.current_cooperative_id', '', true), set_config('app.current_federation_id', '', true)`;
   }
 }
