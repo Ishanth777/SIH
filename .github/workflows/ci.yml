@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: "CI/CD Pipeline"
 
 on:
   push:
@@ -17,40 +17,40 @@ env:
 jobs:
   # ── Lint & Type Check ───────────────────────────────────────
   lint:
-    name: Lint & Type Check
+    name: "Lint & Type Check"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
+      - name: "Install pnpm"
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Set up Node.js
+      - name: "Set up Node.js"
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
-      - name: Install dependencies
+      - name: "Install dependencies"
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
+      - name: "Generate Prisma Client"
         run: pnpm --filter api prisma:generate
 
-      - name: Type check shared-types
+      - name: "Type check shared-types"
         run: pnpm --filter shared-types build
 
-      - name: Build API
+      - name: "Build API"
         run: pnpm --filter api build
 
-      - name: Build Web
+      - name: "Build Web"
         run: pnpm --filter web build
 
   # ── Backend Unit & Integration Tests ────────────────────────
   test-api:
-    name: API Tests & RLS Gate
+    name: "API Tests & RLS Gate"
     runs-on: ubuntu-latest
     needs: lint
 
@@ -94,117 +94,117 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
+      - name: "Install pnpm"
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Set up Node.js
+      - name: "Set up Node.js"
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
-      - name: Install dependencies
+      - name: "Install dependencies"
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
+      - name: "Generate Prisma Client"
         run: pnpm --filter api prisma:generate
 
-      - name: Push database schema (Non-interactive CI migration)
+      - name: "Push database schema (Non-interactive CI migration)"
         run: pnpm --filter api exec prisma db push --skip-generate
         env:
           DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
 
-      - name: Apply RLS policies
+      - name: "Apply RLS policies"
         run: pnpm --filter api exec prisma db execute --file ../../infra/docker/init-scripts/02-rls-policies.sql --schema prisma/schema.prisma
         env:
           DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
 
-      - name: Run unit tests
+      - name: "Run unit tests"
         run: pnpm --filter api test
 
-      - name: Run integration tests (Rule T2: permanent RLS gate)
+      - name: "Run integration tests (Rule T2: permanent RLS gate)"
         run: pnpm --filter api test:e2e
         env:
           DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
 
   # ── AI Forecasting Tests (Rule E3) ──────────────────────────
   test-forecasting:
-    name: Forecasting Tests (Python 3.11)
+    name: "Forecasting Tests (Python 3.11)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
+      - name: "Set up Python ${{ env.PYTHON_VERSION }}"
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
+      - name: "Install Poetry"
         uses: snok/install-poetry@v1
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Install forecasting dependencies
+      - name: "Install forecasting dependencies"
         working-directory: apps/forecasting
         run: poetry install --no-interaction
 
-      - name: Run pytest
+      - name: "Run pytest"
         working-directory: apps/forecasting
         run: poetry run pytest
 
   # ── Security Audit (Rule S4) ────────────────────────────────
   audit:
-    name: Security Audit
+    name: "Security Audit"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
+      - name: "Install pnpm"
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Set up Node.js
+      - name: "Set up Node.js"
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
+      - name: "Set up Python ${{ env.PYTHON_VERSION }}"
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: "Install dependencies"
         run: pnpm install --frozen-lockfile
 
-      - name: Run Node Audit (Rule S4)
+      - name: "Run Node Audit (Rule S4)"
         run: pnpm audit --prod --audit-level=high
 
-      - name: Install pip-audit
+      - name: "Install pip-audit"
         run: pip install pip-audit
 
-      - name: Run Python Audit (Rule S4)
+      - name: "Run Python Audit (Rule S4)"
         run: pip-audit -r apps/forecasting/requirements.txt
 
   # ── Container Vulnerability Scan (Rule S5) ───────────────────
   container-scan:
-    name: Trivy Container Scan (Rule S5)
+    name: "Trivy Container Scan (Rule S5)"
     runs-on: ubuntu-latest
     needs: [lint, test-forecasting]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Forecasting Image
+      - name: "Build Forecasting Image"
         run: docker build -t coop-forecasting:ci -f apps/forecasting/Dockerfile apps/forecasting
 
-      - name: Run Trivy Scan on Forecasting Image
+      - name: "Run Trivy Scan on Forecasting Image"
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: coop-forecasting:ci
@@ -216,15 +216,15 @@ jobs:
 
   # ── Staging Deployment Gate ─────────────────────────────────
   deploy-staging:
-    name: Deploy to Staging
+    name: "Deploy to Staging"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [test-api, test-forecasting, audit, container-scan]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate Staging Docker Compose Configuration
+      - name: "Validate Staging Docker Compose Configuration"
         run: docker compose -f infra/docker/docker-compose.staging.yml config
 
-      - name: Deploy Staging Stack Notification
+      - name: "Deploy Staging Stack Notification"
         run: echo "Staging infrastructure stack validated and ready for target deployment."
