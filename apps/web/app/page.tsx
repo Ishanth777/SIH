@@ -12,9 +12,9 @@ export default function Home() {
     if (!session) {
       router.replace('/login');
     } else if (session.role === 'FEDERATION_ADMIN') {
-      router.replace('/admin/federation');
+      router.replace('/federation');
     } else if (session.role === 'SOCIETY_ADMIN') {
-      router.replace('/admin/society');
+      router.replace('/society');
     } else {
       router.replace('/login');
     }

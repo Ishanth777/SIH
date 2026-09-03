@@ -106,11 +106,11 @@ export default function LoginPage() {
       const session = decodeJwt(tokens.accessToken);
       setTimeout(() => {
         if (session?.role === 'FEDERATION_ADMIN') {
-          router.push('/admin/federation');
+          router.push('/federation');
         } else if (session?.role === 'SOCIETY_ADMIN') {
-          router.push('/admin/society');
+          router.push('/society');
         } else {
-          router.push('/admin/federation');
+          router.push('/federation');
         }
       }, 1000);
     } catch (err: any) {

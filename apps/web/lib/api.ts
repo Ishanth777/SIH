@@ -1,6 +1,6 @@
 /**
  * API Client & Auth Helpers
- * Connects apps/web to the NestJS API auth endpoints.
+ * Connects apps/web to the NestJS API auth, analytics, and cooperatives endpoints.
  */
 
 export interface UserSession {
@@ -15,6 +15,34 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: string;
+}
+
+export interface FederationMetrics {
+  totalWorkers: number;
+  totalJobs: number;
+  completedJobs: number;
+  completionRate: number;
+  totalRevenue: number;
+  activeDisputes: number;
+}
+
+export interface SocietyMetrics {
+  totalWorkers: number;
+  totalJobs: number;
+  completedJobs: number;
+  completionRate: number;
+  totalRevenue: number;
+}
+
+export interface CooperativeSociety {
+  id: string;
+  name: string;
+  registrationNumber?: string;
+  address?: string;
+  federationId: string;
+  createdAt: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -102,4 +130,84 @@ export function clearAuth() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
   }
+}
+
+/**
+ * Fetch Aggregated Metrics for a Federation
+ */
+export async function fetchFederationMetrics(federationId: string): Promise<FederationMetrics> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const res = await fetch(`${API_BASE}/analytics/federation/${federationId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch federation metrics');
+  }
+  return res.json();
+}
+
+/**
+ * Fetch Aggregated Metrics for a Cooperative Society
+ */
+export async function fetchSocietyMetrics(cooperativeId: string): Promise<SocietyMetrics> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const res = await fetch(`${API_BASE}/analytics/society/${cooperativeId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch society metrics');
+  }
+  return res.json();
+}
+
+/**
+ * List Cooperatives by Federation
+ */
+export async function fetchCooperatives(federationId: string): Promise<{ data: CooperativeSociety[]; total: number }> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const res = await fetch(`${API_BASE}/cooperatives?federationId=${federationId}&limit=50`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch cooperatives');
+  }
+  return res.json();
+}
+
+/**
+ * Register a new Cooperative Society
+ */
+export async function createCooperative(dto: {
+  federationId: string;
+  name: string;
+  registrationNumber?: string;
+  address?: string;
+}): Promise<CooperativeSociety> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const res = await fetch(`${API_BASE}/cooperatives`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(dto),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to create cooperative');
+  }
+  return data;
 }
