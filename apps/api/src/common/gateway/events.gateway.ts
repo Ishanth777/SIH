@@ -15,7 +15,11 @@ import {
   OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
+import { Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -76,5 +80,29 @@ export class EventsGateway
    */
   emitBookingStatus(customerId: string, payload: Record<string, unknown>): void {
     this.server.to(`customer:${customerId}`).emit('booking:status', payload);
+  }
+
+  @SubscribeMessage('job:join_room')
+  handleJoinJobRoom(
+    @MessageBody() data: { jobId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`job:${data.jobId}`);
+  }
+
+  @SubscribeMessage('job:leave_room')
+  handleLeaveJobRoom(
+    @MessageBody() data: { jobId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.leave(`job:${data.jobId}`);
+  }
+
+  @SubscribeMessage('worker:join_room')
+  handleJoinWorkerRoom(
+    @MessageBody() data: { workerId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`worker:${data.workerId}`);
   }
 }

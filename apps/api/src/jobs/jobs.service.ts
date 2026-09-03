@@ -63,7 +63,11 @@ export class JobsService {
     });
 
     // Notify customer about status change
-    this.eventsGateway.emitJobStatus(job.serviceRequest.customerId, {
+    this.eventsGateway.emitJobStatus(updatedJob.id, {
+      jobId: updatedJob.id,
+      status: updatedJob.status,
+    });
+    this.eventsGateway.emitBookingStatus(job.serviceRequest.customerId, {
       jobId: updatedJob.id,
       status: updatedJob.status,
     });

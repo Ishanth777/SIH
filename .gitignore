@@ -57,3 +57,4 @@ infra/docker/minio-data/
 # Misc
 *.tsbuildinfo
 .turbo/
+Squad*.md
