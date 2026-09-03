@@ -1,9 +1,11 @@
 import './globals.css';
 import React from 'react';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'Cooperative Labour Marketplace',
-  description: 'Fair-wage on-demand & scheduled service booking platform',
+  title: 'BharatGig | Cooperative Labour Marketplace',
+  description: 'Fair wages for artisans, trusted services for households, owned by cooperative guilds.',
 };
 
 export default function RootLayout({
@@ -13,23 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900">
-        <header className="border-b border-slate-200 bg-white sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🤝</span>
-              <span className="font-bold text-lg tracking-tight text-slate-900">
-                Co-op Marketplace
-              </span>
-            </div>
-            <nav className="flex items-center gap-4 text-sm font-medium text-slate-600">
-              <a href="/booking" className="hover:text-blue-600 transition">
-                Book Service
-              </a>
-            </nav>
-          </div>
-        </header>
-        <main>{children}</main>
+      <body className="min-h-screen bg-[#F8FAFC] text-[#0D1829] flex flex-col font-sans selection:bg-[#D1FAE5] selection:text-[#047857]">
+        <Navbar />
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );

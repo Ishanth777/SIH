@@ -1,8 +1,8 @@
-import { Controller, Get, Patch, Body, Param, UseGuards, ParseUUIDPipe, Req } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, Param, UseGuards, ParseUUIDPipe, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JobsService } from './jobs.service';
-import { UpdateJobStatusDto } from './dto';
+import { UpdateJobStatusDto, RateJobDto } from './dto';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
 
@@ -37,6 +37,20 @@ export class JobsController {
     return this.jobsService.updateJobStatus(id, workerId, dto.action);
   }
 
+  @Post(':id/rate')
+  @ApiOperation({ summary: 'Customer rates a completed job' })
+  @ApiResponse({ status: 201, description: 'Rating submitted successfully' })
+  @ApiResponse({ status: 400, description: 'Job not completed or already rated' })
+  @ApiResponse({ status: 404, description: 'Job not found' })
+  rate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RateJobDto,
+    @Req() req: any,
+  ) {
+    const customerId = req.user?.sub || null;
+    return this.jobsService.rateJob(id, customerId, dto);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get job details' })
   @ApiResponse({ status: 200, description: 'Job details retrieved' })
@@ -45,3 +59,4 @@ export class JobsController {
     return this.jobsService.findOne(id);
   }
 }
+

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useSocket } from '../../hooks/useSocket';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 const WORKER_TOKEN = 'mock-worker-token';
 const WORKER_ID = 'mock-worker-id'; 
 
@@ -28,9 +28,14 @@ export default function JobOfferScreen() {
 
   const updateJobStatus = async (action: string) => {
     if (!jobOffer) return;
+    const targetJobId = jobOffer.jobId || jobOffer.id;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/jobs/${jobOffer.id}/status`, {
+      const endpoint = API_URL.endsWith('/api')
+        ? `${API_URL}/jobs/${targetJobId}/status`
+        : `${API_URL}/api/jobs/${targetJobId}/status`;
+
+      const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -39,6 +44,7 @@ export default function JobOfferScreen() {
         body: JSON.stringify({ action })
       });
       if (!res.ok) throw new Error('Failed to update status');
+
       
       setStatus(
         action === 'ACCEPT' ? 'ACCEPTED' :

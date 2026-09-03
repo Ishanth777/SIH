@@ -1,9 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #f8fafc;
-  color: #0f172a;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+@layer base {
+  body {
+    background-color: #F8FAFC;
+    color: #0D1829;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    color: #0D1829;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    background: linear-gradient(135deg, #0E2150 0%, #1A3470 100%);
+    color: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(14, 33, 80, 0.25);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    transition: all 0.18s ease;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(14, 33, 80, 0.35);
+  }
+
+  .btn-action {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.30);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    transition: all 0.18s ease;
+  }
+  .btn-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(5, 150, 105, 0.40);
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    color: #0D1829;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    transition: all 0.18s ease;
+  }
+  .btn-outline:hover {
+    background-color: #F8FAFC;
+    border-color: #CBD5E1;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-radius: 8px;
+    color: #475569;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    transition: all 0.18s ease;
+  }
+  .btn-ghost:hover {
+    color: #0D1829;
+    background-color: #F1F5F9;
+  }
+
+  /* Cards */
+  .card-base {
+    background: #FFFFFF;
+    border-radius: 16px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    padding: 24px;
+    transition: all 0.18s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(14, 33, 80, 0.08);
+  }
+
+  /* Inputs */
+  .input-base {
+    background: #F8FAFC;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: #0D1829;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.18s ease;
+  }
+  .input-base:focus {
+    outline: none;
+    border-color: #0E2150;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(14, 33, 80, 0.08);
+  }
+
+  /* Eyebrows & Field Labels */
+  .label-style {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94A3B8;
+  }
+
+  .eyebrow {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #059669;
+  }
+
+  /* Badges */
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+  }
 }

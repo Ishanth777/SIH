@@ -41,4 +41,10 @@ export class UpdateWorkerDto {
   @Min(-180)
   @Max(180)
   longitude?: number;
+
+  @ApiPropertyOptional({ description: 'KYC document URLs in object storage (Rule A6)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  kycDocumentUrls?: string[];
 }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma';
-import { WorkerJobAction } from './dto';
+import { WorkerJobAction, RateJobDto } from './dto';
 import { ErrorCode } from '../common/constants';
 import { EventsGateway } from '../common/gateway';
 
@@ -78,11 +78,65 @@ export class JobsService {
   async findOne(id: string) {
     const job = await this.prisma.job.findUnique({
       where: { id },
-      include: { serviceRequest: true, worker: true, payment: true },
+      include: { serviceRequest: true, worker: true, payment: true, rating: true },
     });
     if (!job) {
       throw new NotFoundException('Job not found');
     }
     return job;
   }
+
+  async rateJob(jobId: string, customerId: string | null, dto: RateJobDto) {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      include: { serviceRequest: true, worker: true, rating: true },
+    });
+
+    if (!job) {
+      throw new NotFoundException({ message: 'Job not found', errorCode: ErrorCode.NOT_FOUND });
+    }
+
+    if (!job.workerId) {
+      throw new BadRequestException('Cannot rate a job without an assigned worker');
+    }
+
+    if (job.status !== 'COMPLETED') {
+      throw new BadRequestException('Only completed jobs can be rated');
+    }
+
+    if (job.rating) {
+      throw new BadRequestException('Job has already been rated');
+    }
+
+    const effectiveCustomerId = customerId || job.serviceRequest.customerId;
+
+    const rating = await this.prisma.rating.create({
+      data: {
+        jobId: job.id,
+        customerId: effectiveCustomerId,
+        workerId: job.workerId,
+        score: dto.rating,
+        comment: dto.comment,
+      },
+    });
+
+    // Recalculate worker's average rating
+    const workerRatings = await this.prisma.rating.findMany({
+      where: { workerId: job.workerId },
+      select: { score: true },
+    });
+
+    const sum = workerRatings.reduce((acc, curr) => acc + curr.score, 0);
+    const newAverage = Number((sum / workerRatings.length).toFixed(2));
+
+    await this.prisma.worker.update({
+      where: { id: job.workerId },
+      data: {
+        averageRating: newAverage,
+      },
+    });
+
+    return rating;
+  }
 }
+

@@ -9,6 +9,8 @@ describe('JobsService (State Machine & Realtime)', () => {
   let service: JobsService;
   let mockPrismaService: {
     job: { findUnique: jest.Mock; update: jest.Mock };
+    rating: { create: jest.Mock; findMany: jest.Mock };
+    worker: { update: jest.Mock };
   };
   let mockEventsGateway: {
     emitJobStatus: jest.Mock;
@@ -22,6 +24,13 @@ describe('JobsService (State Machine & Realtime)', () => {
     mockPrismaService = {
       job: {
         findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      rating: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+      },
+      worker: {
         update: jest.fn(),
       },
     };
@@ -137,4 +146,75 @@ describe('JobsService (State Machine & Realtime)', () => {
       expect(mockEventsGateway.emitJobStatus).toHaveBeenCalled();
     });
   });
+
+  describe('rateJob', () => {
+    it('should successfully submit rating and recalculate average rating for completed job', async () => {
+      mockPrismaService.job.findUnique.mockResolvedValueOnce({
+        id: mockJobId,
+        workerId: mockWorkerId,
+        status: 'COMPLETED',
+        rating: null,
+        serviceRequest: { customerId: 'cust-1' },
+      });
+
+      mockPrismaService.rating.create.mockResolvedValueOnce({
+        id: 'rating-1',
+        jobId: mockJobId,
+        customerId: 'cust-1',
+        workerId: mockWorkerId,
+        score: 5,
+        comment: 'Great job!',
+      });
+
+      mockPrismaService.rating.findMany.mockResolvedValueOnce([
+        { score: 5 },
+        { score: 4 },
+      ]);
+
+      mockPrismaService.worker.update.mockResolvedValueOnce({
+        id: mockWorkerId,
+        averageRating: 4.5,
+      });
+
+      const rating = await service.rateJob(mockJobId, 'cust-1', {
+        rating: 5,
+        comment: 'Great job!',
+      });
+
+      expect(rating.score).toBe(5);
+      expect(mockPrismaService.worker.update).toHaveBeenCalledWith({
+        where: { id: mockWorkerId },
+        data: { averageRating: 4.5 },
+      });
+    });
+
+    it('should throw BadRequestException if job is not COMPLETED', async () => {
+      mockPrismaService.job.findUnique.mockResolvedValueOnce({
+        id: mockJobId,
+        workerId: mockWorkerId,
+        status: 'IN_PROGRESS',
+        rating: null,
+        serviceRequest: { customerId: 'cust-1' },
+      });
+
+      await expect(
+        service.rateJob(mockJobId, 'cust-1', { rating: 4 }),
+      ).rejects.toThrow('Only completed jobs can be rated');
+    });
+
+    it('should throw BadRequestException if job is already rated', async () => {
+      mockPrismaService.job.findUnique.mockResolvedValueOnce({
+        id: mockJobId,
+        workerId: mockWorkerId,
+        status: 'COMPLETED',
+        rating: { id: 'existing-rating' },
+        serviceRequest: { customerId: 'cust-1' },
+      });
+
+      await expect(
+        service.rateJob(mockJobId, 'cust-1', { rating: 4 }),
+      ).rejects.toThrow('Job has already been rated');
+    });
+  });
 });
+

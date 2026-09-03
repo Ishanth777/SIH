@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '9'
@@ -19,16 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          version: 9
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm --filter api prisma:generate
@@ -36,8 +42,11 @@ jobs:
       - name: Type check shared-types
         run: pnpm --filter shared-types build
 
-      - name: Type check API
+      - name: Build API
         run: pnpm --filter api build
+
+      - name: Build Web
+        run: pnpm --filter web build
 
   # ── Backend Unit & Integration Tests ────────────────────────
   test-api:
@@ -85,35 +94,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          version: 9
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm --filter api prisma:generate
 
-      - name: Run database migrations
-        run: pnpm --filter api prisma:migrate
+      - name: Push database schema (Non-interactive CI migration)
+        run: pnpm --filter api exec prisma db push --skip-generate
         env:
           DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
 
       - name: Apply RLS policies
-        run: |
-          PGPASSWORD=coop_password psql -h localhost -U coop_user -d coop_marketplace \
-            -f infra/docker/init-scripts/02-rls-policies.sql
+        run: pnpm --filter api exec prisma db execute --file ../../infra/docker/init-scripts/02-rls-policies.sql --schema prisma/schema.prisma
+        env:
+          DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
 
       - name: Run unit tests
         run: pnpm --filter api test
 
       - name: Run integration tests (Rule T2: permanent RLS gate)
         run: pnpm --filter api test:e2e
+        env:
+          DATABASE_URL: postgresql://coop_user:coop_password@localhost:5432/coop_marketplace?schema=public
 
   # ── AI Forecasting Tests (Rule E3) ──────────────────────────
   test-forecasting:
@@ -148,24 +162,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          version: 9
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
-      - run: pnpm install --frozen-lockfile
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Run Node Audit (rule S4)
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Node Audit (Rule S4)
         run: pnpm audit --prod --audit-level=high
 
       - name: Install pip-audit
         run: pip install pip-audit
 
-      - name: Run Python Audit (rule S4)
+      - name: Run Python Audit (Rule S4)
         run: pip-audit -r apps/forecasting/requirements.txt
 
   # ── Container Vulnerability Scan (Rule S5) ───────────────────
@@ -183,7 +205,7 @@ jobs:
         run: docker build -t coop-forecasting:ci -f apps/forecasting/Dockerfile apps/forecasting
 
       - name: Run Trivy Scan on Forecasting Image
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: coop-forecasting:ci
           format: 'table'
