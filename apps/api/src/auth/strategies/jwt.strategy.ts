@@ -40,6 +40,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (user.cooperativeId) {
       await this.prisma.setTenantContext(user.cooperativeId);
     }
+    if (user.federationId) {
+      await this.prisma.setFederationContext(user.federationId);
+    }
 
     return payload;
   }
