@@ -59,6 +59,13 @@ export class AuthService {
     // Find or note that this is a new user
     let user = await this.prisma.user.findUnique({ where: { phone } });
 
+    if (user && user.isActive === false) {
+      throw new HttpException(
+        { message: 'User account is deactivated', errorCode: ErrorCode.UNAUTHORIZED },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     if (!user) {
       // For OTP flow, we create a stub user on first contact.
       // Role and cooperative assignment happen during registration.
@@ -120,9 +127,12 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { phone } });
 
-    if (!user) {
+    if (!user || user.isActive === false) {
       throw new HttpException(
-        { message: 'User not found', errorCode: ErrorCode.INVALID_OTP },
+        {
+          message: user ? 'User account is deactivated' : 'User not found',
+          errorCode: user ? ErrorCode.UNAUTHORIZED : ErrorCode.INVALID_OTP,
+        },
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -138,8 +148,23 @@ export class AuthService {
     });
 
     if (!otp) {
+      const expiredOtp = await this.prisma.otp.findFirst({
+        where: {
+          userId: user.id,
+          code,
+          verified: false,
+        },
+      });
+
+      if (expiredOtp) {
+        throw new HttpException(
+          { message: 'OTP has expired', errorCode: ErrorCode.OTP_EXPIRED },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
       throw new HttpException(
-        { message: 'Invalid or expired OTP', errorCode: ErrorCode.INVALID_OTP },
+        { message: 'Invalid OTP', errorCode: ErrorCode.INVALID_OTP },
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -164,26 +189,27 @@ export class AuthService {
   async refreshToken(dto: RefreshTokenDto): Promise<AuthTokens> {
     const { refreshToken } = dto;
 
+    let payload: JwtPayload;
     try {
-      const payload = this.jwt.verify<JwtPayload>(refreshToken, {
+      payload = this.jwt.verify<JwtPayload>(refreshToken, {
         secret: this.config.get('JWT_REFRESH_SECRET', { infer: true }),
       });
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
-
-      if (!user || !user.isActive) {
-        throw new UnauthorizedException('User not found or deactivated');
-      }
-
-      return this.generateTokens(user);
     } catch {
       throw new HttpException(
         { message: 'Invalid or expired refresh token', errorCode: ErrorCode.TOKEN_EXPIRED },
         HttpStatus.UNAUTHORIZED,
       );
     }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('User not found or deactivated');
+    }
+
+    return this.generateTokens(user);
   }
 
   /**

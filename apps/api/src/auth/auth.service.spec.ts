@@ -64,15 +64,16 @@ describe('AuthService', () => {
   });
 
   describe('sendOtp', () => {
-    it('should generate an OTP and save it', async () => {
+    it('should generate an OTP and save it for new user', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.create.mockResolvedValue({ id: 'user-1', phone: '+919999999999' });
+      mockPrismaService.user.create.mockResolvedValue({ id: 'user-1', phone: '+919999999999', isActive: true });
       mockPrismaService.otp.updateMany.mockResolvedValue({ count: 1 });
       mockPrismaService.otp.create.mockResolvedValue({ id: 'otp-1' });
 
       const result = await service.sendOtp({ phone: '+919999999999' });
 
       expect(result).toEqual(expect.objectContaining({ message: 'OTP sent successfully' }));
+      expect(mockPrismaService.user.create).toHaveBeenCalled();
       expect(mockPrismaService.otp.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -83,6 +84,24 @@ describe('AuthService', () => {
         })
       );
     });
+
+    it('should not create user if user already exists', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: 'user-1', phone: '+919999999999', isActive: true });
+      mockPrismaService.otp.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.otp.create.mockResolvedValue({ id: 'otp-1' });
+
+      const result = await service.sendOtp({ phone: '+919999999999' });
+
+      expect(result).toEqual(expect.objectContaining({ message: 'OTP sent successfully' }));
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw if user account is deactivated', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: 'user-1', phone: '+919999999999', isActive: false });
+
+      await expect(service.sendOtp({ phone: '+919999999999' }))
+        .rejects.toThrow(HttpException);
+    });
   });
 
   describe('verifyOtp', () => {
@@ -92,6 +111,7 @@ describe('AuthService', () => {
         phone: '+919999999999',
         role: 'CUSTOMER',
         cooperativeId: 'coop-1',
+        isActive: true,
       };
       const otp = {
         id: 'otp-1',
@@ -112,21 +132,74 @@ describe('AuthService', () => {
       expect(mockPrismaService.otp.update).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException for invalid OTP', async () => {
-      const user = { id: 'user-1', phone: '+919999999999' };
+    it('should throw HttpException for non-existent user', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.verifyOtp({ phone: '+919999999999', code: '123456' }))
+        .rejects.toThrow(HttpException);
+    });
+
+    it('should throw HttpException for deactivated user', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: 'user-1', phone: '+919999999999', isActive: false });
+
+      await expect(service.verifyOtp({ phone: '+919999999999', code: '123456' }))
+        .rejects.toThrow(HttpException);
+    });
+
+    it('should throw HttpException with OTP_EXPIRED for expired OTP', async () => {
+      const user = { id: 'user-1', phone: '+919999999999', isActive: true };
+      mockPrismaService.user.findUnique.mockResolvedValue(user);
+      // First call (valid OTP) returns null
+      // Second call (expired OTP check) returns expired OTP record
+      mockPrismaService.otp.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'otp-1', code: '123456', verified: false, expiresAt: new Date(Date.now() - 1000) });
+
+      await expect(service.verifyOtp({ phone: '+919999999999', code: '123456' }))
+        .rejects.toThrow(HttpException);
+    });
+
+    it('should throw HttpException with INVALID_OTP for completely invalid OTP', async () => {
+      const user = { id: 'user-1', phone: '+919999999999', isActive: true };
       mockPrismaService.user.findUnique.mockResolvedValue(user);
       mockPrismaService.otp.findFirst.mockResolvedValue(null);
 
       await expect(service.verifyOtp({ phone: '+919999999999', code: '000000' }))
         .rejects.toThrow(HttpException);
     });
+  });
 
-    it('should throw BadRequestException for expired OTP', async () => {
-      const user = { id: 'user-1', phone: '+919999999999' };
+  describe('refreshToken', () => {
+    it('should return new tokens for valid refresh token', async () => {
+      const payload = { sub: 'user-1', phone: '+919999999999', role: 'CUSTOMER' };
+      const user = { id: 'user-1', phone: '+919999999999', role: 'CUSTOMER', isActive: true };
+
+      mockJwtService.verify.mockReturnValue(payload);
       mockPrismaService.user.findUnique.mockResolvedValue(user);
-      mockPrismaService.otp.findFirst.mockResolvedValue(null);
+      mockJwtService.signAsync.mockResolvedValue('new-token');
 
-      await expect(service.verifyOtp({ phone: '+919999999999', code: '123456' }))
+      const result = await service.refreshToken({ refreshToken: 'valid-refresh-token' });
+      expect(result).toHaveProperty('accessToken', 'new-token');
+      expect(result).toHaveProperty('refreshToken', 'new-token');
+    });
+
+    it('should throw UnauthorizedException if user is deactivated', async () => {
+      const payload = { sub: 'user-1', phone: '+919999999999', role: 'CUSTOMER' };
+      const user = { id: 'user-1', phone: '+919999999999', role: 'CUSTOMER', isActive: false };
+
+      mockJwtService.verify.mockReturnValue(payload);
+      mockPrismaService.user.findUnique.mockResolvedValue(user);
+
+      await expect(service.refreshToken({ refreshToken: 'valid-refresh-token' }))
+        .rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw HttpException if refresh token is invalid', async () => {
+      mockJwtService.verify.mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+
+      await expect(service.refreshToken({ refreshToken: 'invalid-token' }))
         .rejects.toThrow(HttpException);
     });
   });
