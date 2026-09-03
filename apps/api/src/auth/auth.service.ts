@@ -11,6 +11,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -18,6 +19,8 @@ import { PrismaService } from '../common/prisma';
 import { ErrorCode } from '../common/constants';
 import { SendOtpDto, VerifyOtpDto, RefreshTokenDto } from './dto';
 import type { EnvConfig } from '../common/config/env.validation';
+import { NotificationsService } from '../notifications/notifications.service';
+import { DLT_TEMPLATES } from '../notifications/interfaces/sms.interface';
 
 export interface JwtPayload {
   sub: string;        // userId
@@ -46,6 +49,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<EnvConfig, true>,
+    @Optional() private readonly notificationsService?: NotificationsService,
   ) {}
 
   /**
@@ -96,13 +100,17 @@ export class AuthService {
       },
     });
 
-    // In development, log OTP (in production, send via SMS)
+    // Enqueue SMS via BullMQ (rule B3) with DLT template (rule S8)
+    const otpMessage = `Your verification OTP for Cooperative Labour Marketplace is ${code}. Valid for 5 minutes. Do not share this code.`;
+    if (this.notificationsService) {
+      await this.notificationsService.sendSms(phone, otpMessage, DLT_TEMPLATES.OTP.templateId, {
+        code,
+      });
+    }
+
+    // In development, log OTP to terminal for convenience
     if (this.config.get('NODE_ENV', { infer: true }) === 'development') {
       this.logger.warn(`[DEV] OTP for ${phone}: ${code}`);
-    } else {
-      // TODO: Integrate SMS provider (DLT-registered templates per rule S8)
-      // await this.smsService.sendOtp(phone, code);
-      this.logger.log(`OTP sent to ${phone} via SMS`);
     }
 
     return {

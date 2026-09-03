@@ -1,54 +1,57 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 from typing import List
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
+from forecaster import DemandForecaster, SERVICE_CATEGORIES
 
-app = FastAPI(title="Forecasting Service", version="0.1.0")
+app = FastAPI(
+    title="Cooperative Labour Demand Forecasting Service",
+    version="1.0.0",
+    description="Time-series and ML demand forecasting for cooperative federations and societies.",
+)
+
+forecaster = DemandForecaster(model_version="1.0.0")
+
 
 class ForecastRequest(BaseModel):
-    cooperativeId: str
-    days: int = 7
+    cooperativeId: str = Field(..., description="UUID of the cooperative society")
+    days: int = Field(default=7, ge=1, le=30, description="Forecast horizon in days (1-30)")
+
 
 class CategoryForecast(BaseModel):
     category: str
     expectedDemand: int
     confidenceScore: float
 
+
 class ForecastResponse(BaseModel):
     date: str
     forecasts: List[CategoryForecast]
 
+
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "service": "forecasting",
+        "version": "1.0.0",
+        "supportedCategories": SERVICE_CATEGORIES,
+    }
+
 
 @app.post("/forecast", response_model=List[ForecastResponse])
 def get_forecast(req: ForecastRequest):
     """
-    Mock forecasting endpoint returning simulated demand for the next N days.
+    Generate demand forecasts for the specified cooperative society across all service categories.
+    Uses day-of-week seasonality, society scale bias, and confidence horizon degradation.
     """
-    categories = ["ELECTRICIAN", "PLUMBER", "CLEANER", "CAREGIVER"]
-    results = []
-    
-    today = datetime.now()
-    for i in range(req.days):
-        date_str = (today + timedelta(days=i)).strftime("%Y-%m-%d")
-        
-        day_forecasts = []
-        for cat in categories:
-            # Simulate random demand between 5 and 50 jobs
-            demand = random.randint(5, 50)
-            confidence = round(random.uniform(0.70, 0.98), 2)
-            
-            day_forecasts.append(
-                CategoryForecast(
-                    category=cat,
-                    expectedDemand=demand,
-                    confidenceScore=confidence
-                )
-            )
-            
-        results.append(ForecastResponse(date=date_str, forecasts=day_forecasts))
-        
-    return results
+    try:
+        today = datetime.now()
+        results = forecaster.generate_forecast(
+            cooperative_id=req.cooperativeId,
+            start_date=today,
+            days=req.days,
+        )
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Forecasting calculation failed: {str(e)}")

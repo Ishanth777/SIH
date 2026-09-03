@@ -22,9 +22,16 @@ export const envSchema = z.object({
   OTP_EXPIRY_SECONDS: z.coerce.number().default(300),
   OTP_LENGTH: z.coerce.number().default(6),
 
-  // SMS
+  // SMS (rule S8)
   SMS_API_KEY: z.string().optional(),
   SMS_SENDER_ID: z.string().optional(),
+  SMS_DLT_ENTITY_ID: z.string().optional(),
+  SMS_PROVIDER: z.enum(['mock', 'msg91', 'fast2sms']).default('mock'),
+
+  // Firebase Cloud Messaging (FCM, rule M2)
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
 
   // Razorpay
   RAZORPAY_KEY_ID: z.string().optional(),

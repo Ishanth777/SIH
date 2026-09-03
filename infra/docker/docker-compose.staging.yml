@@ -1,0 +1,111 @@
+# Cooperative Labour Marketplace — Staging Infrastructure Stack
+# Used by CI/CD staging deployment pipeline
+
+services:
+  # ── PostgreSQL + PostGIS (Rule A2) ─────────────────────────────
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: coop-staging-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: coop_user
+      POSTGRES_PASSWORD: coop_staging_password
+      POSTGRES_DB: coop_marketplace
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coop_user -d coop_marketplace"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Rule A10, B3) ──────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: coop-staging-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_staging_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MinIO (Rule A6) ──────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: coop-staging-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    volumes:
+      - minio_staging_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── AI Forecasting Microservice (Rule E3, A3) ─────────────────
+  forecasting:
+    build:
+      context: ../../apps/forecasting
+      dockerfile: Dockerfile
+    container_name: coop-staging-forecasting
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend API ───────────────────────────────────────────────
+  api:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    container_name: coop-staging-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://coop_user:coop_staging_password@postgres:5432/coop_marketplace?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_ACCESS_SECRET: staging-access-secret-minimum-16-chars
+      JWT_REFRESH_SECRET: staging-refresh-secret-minimum-16-chars
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      NODE_ENV: production
+      API_PORT: 3000
+      API_PREFIX: api
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadminpassword
+      MINIO_BUCKET: coop-documents
+      FORECASTING_SERVICE_URL: http://forecasting:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      forecasting:
+        condition: service_started
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+  minio_staging_data:

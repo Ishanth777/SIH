@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '9'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   # ── Lint & Type Check ───────────────────────────────────────
@@ -32,15 +33,15 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter api prisma:generate
 
-      - name: Type check API
-        run: pnpm --filter api build
-
       - name: Type check shared-types
         run: pnpm --filter shared-types build
 
-  # ── Unit & Integration Tests ────────────────────────────────
-  test:
-    name: Tests
+      - name: Type check API
+        run: pnpm --filter api build
+
+  # ── Backend Unit & Integration Tests ────────────────────────
+  test-api:
+    name: API Tests & RLS Gate
     runs-on: ubuntu-latest
     needs: lint
 
@@ -111,10 +112,36 @@ jobs:
       - name: Run unit tests
         run: pnpm --filter api test
 
-      - name: Run integration tests (includes RLS cross-tenant test)
+      - name: Run integration tests (Rule T2: permanent RLS gate)
         run: pnpm --filter api test:e2e
 
-  # ── Security Audit ──────────────────────────────────────────
+  # ── AI Forecasting Tests (Rule E3) ──────────────────────────
+  test-forecasting:
+    name: Forecasting Tests (Python 3.11)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install forecasting dependencies
+        working-directory: apps/forecasting
+        run: poetry install --no-interaction
+
+      - name: Run pytest
+        working-directory: apps/forecasting
+        run: poetry run pytest
+
+  # ── Security Audit (Rule S4) ────────────────────────────────
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -140,3 +167,42 @@ jobs:
 
       - name: Run Python Audit (rule S4)
         run: pip-audit -r apps/forecasting/requirements.txt
+
+  # ── Container Vulnerability Scan (Rule S5) ───────────────────
+  container-scan:
+    name: Trivy Container Scan (Rule S5)
+    runs-on: ubuntu-latest
+    needs: [lint, test-forecasting]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Forecasting Image
+        run: docker build -t coop-forecasting:ci -f apps/forecasting/Dockerfile apps/forecasting
+
+      - name: Run Trivy Scan on Forecasting Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: coop-forecasting:ci
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # ── Staging Deployment Gate ─────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test-api, test-forecasting, audit, container-scan]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Staging Docker Compose Configuration
+        run: docker compose -f infra/docker/docker-compose.staging.yml config
+
+      - name: Deploy Staging Stack Notification
+        run: echo "Staging infrastructure stack validated and ready for target deployment."

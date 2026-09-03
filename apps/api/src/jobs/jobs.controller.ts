@@ -1,9 +1,19 @@
 import { Controller, Get, Patch, Body, Param, UseGuards, ParseUUIDPipe, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { Request } from 'express';
 import { JobsService } from './jobs.service';
 import { UpdateJobStatusDto } from './dto';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
+
+interface AuthenticatedWorkerRequest extends Request {
+  user: {
+    sub: string;
+    phone: string;
+    role: string;
+    workerId?: string;
+  };
+}
 
 @ApiTags('jobs')
 @ApiBearerAuth('access-token')
@@ -15,17 +25,22 @@ export class JobsController {
   @Patch(':id/status')
   @Roles('WORKER')
   @ApiOperation({ summary: 'Worker updates job status (Accept/Reject/Start/Complete)' })
+  @ApiResponse({ status: 200, description: 'Job status updated' })
+  @ApiResponse({ status: 400, description: 'Invalid state transition' })
+  @ApiResponse({ status: 404, description: 'Job not found' })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateJobStatusDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedWorkerRequest,
   ) {
-    // We assume JWT strategy attaches workerId to the user payload if they are a worker
-    return this.jobsService.updateJobStatus(id, req.user.workerId, dto.action);
+    const workerId = req.user.workerId || req.user.sub;
+    return this.jobsService.updateJobStatus(id, workerId, dto.action);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get job details' })
+  @ApiResponse({ status: 200, description: 'Job details retrieved' })
+  @ApiResponse({ status: 404, description: 'Job not found' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.jobsService.findOne(id);
   }
