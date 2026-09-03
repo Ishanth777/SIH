@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#060b19] text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-white;
+  }
+}
+
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+}
