@@ -1,17 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '../../../../components/layout/DashboardLayout';
 import { DataTable, Column } from '../../../../components/common/DataTable';
 import { StatusBadge } from '../../../../components/common/StatusBadge';
-import { BOOKINGS_DATA, Booking } from '../../../../data/mock-data';
+import { Booking } from '../../../../data/mock-data';
+import { getBookings } from '@/data/bookings-store';
 import { PlusIcon } from '../../../../components/icons';
 
 export default function CustomerBookingsPage() {
   const [activeTab, setActiveTab] = useState('ALL');
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
-  const filteredBookings = BOOKINGS_DATA.filter((b) => {
+  useEffect(() => {
+    setBookings(getBookings());
+    const handleUpdate = () => setBookings(getBookings());
+    window.addEventListener('coop_booking_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('coop_booking_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  const filteredBookings = bookings.filter((b) => {
     if (activeTab === 'ACTIVE') return b.status === 'IN_PROGRESS' || b.status === 'MATCHED';
     if (activeTab === 'COMPLETED') return b.status === 'COMPLETED';
     return true;
@@ -109,9 +122,9 @@ export default function CustomerBookingsPage() {
         columns={bookingColumns}
         data={filteredBookings}
         filterTabs={[
-          { label: 'All Bookings', value: 'ALL', count: BOOKINGS_DATA.length },
-          { label: 'Active Dispatches', value: 'ACTIVE', count: BOOKINGS_DATA.filter(b => b.status === 'IN_PROGRESS').length },
-          { label: 'Completed', value: 'COMPLETED', count: BOOKINGS_DATA.filter(b => b.status === 'COMPLETED').length },
+          { label: 'All Bookings', value: 'ALL', count: bookings.length },
+          { label: 'Active Dispatches', value: 'ACTIVE', count: bookings.filter(b => b.status === 'IN_PROGRESS' || b.status === 'MATCHED').length },
+          { label: 'Completed', value: 'COMPLETED', count: bookings.filter(b => b.status === 'COMPLETED').length },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}

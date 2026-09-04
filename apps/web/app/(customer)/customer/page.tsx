@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '../../../components/layout/DashboardLayout';
 import { StatusBadge } from '../../../components/common/StatusBadge';
@@ -16,11 +16,25 @@ import {
   RupeeIcon,
   PlusIcon,
 } from '../../../components/icons';
-import { BOOKINGS_DATA, SERVICE_CATEGORIES, Booking } from '../../../data/mock-data';
+import { SERVICE_CATEGORIES, Booking } from '../../../data/mock-data';
+import { getBookings } from '@/data/bookings-store';
 
 export default function CustomerDashboardPage() {
-  const activeBooking = BOOKINGS_DATA.find((b) => b.status === 'IN_PROGRESS' || b.status === 'MATCHED');
-  const pastBookings = BOOKINGS_DATA.filter((b) => b.status === 'COMPLETED');
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    setBookings(getBookings());
+    const handleUpdate = () => setBookings(getBookings());
+    window.addEventListener('coop_booking_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('coop_booking_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  const activeBooking = bookings.find((b) => b.status === 'IN_PROGRESS' || b.status === 'MATCHED');
+  const pastBookings = bookings.filter((b) => b.status === 'COMPLETED');
 
   const bookingColumns: Column<Booking>[] = [
     {
@@ -212,7 +226,7 @@ export default function CustomerDashboardPage() {
         title="Service Booking History"
         subtitle="Transparent ledger of all past cooperative services."
         columns={bookingColumns}
-        data={BOOKINGS_DATA}
+        data={bookings}
         searchPlaceholder="Search by booking ID, trade, or artisan..."
       />
     </DashboardLayout>

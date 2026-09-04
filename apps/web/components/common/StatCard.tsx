@@ -4,6 +4,7 @@ interface StatCardProps {
   label: string;
   value: string | number;
   subtitle?: string;
+  subtext?: string;
   icon?: React.ReactNode;
   trend?: string;
   trendPositive?: boolean;
@@ -13,10 +14,12 @@ export const StatCard: React.FC<StatCardProps> = ({
   label,
   value,
   subtitle,
+  subtext,
   icon,
   trend,
   trendPositive = true,
 }) => {
+  const displaySubtitle = subtitle || subtext;
   return (
     <div className="card-base card-hover p-5 sm:p-6 flex flex-col justify-between">
       <div className="flex items-center justify-between text-[#94A3B8] mb-2">
@@ -30,9 +33,9 @@ export const StatCard: React.FC<StatCardProps> = ({
         </div>
       </div>
 
-      {(subtitle || trend) && (
+      {(displaySubtitle || trend) && (
         <div className="flex items-center justify-between text-xs mt-1 font-sans">
-          {subtitle && <span className="text-[#475569]">{subtitle}</span>}
+          {displaySubtitle && <span className="text-[#475569]">{displaySubtitle}</span>}
           {trend && (
             <span
               className={`font-heading font-bold text-[11px] ${

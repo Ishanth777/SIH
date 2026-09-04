@@ -39,6 +39,7 @@ ALTER TABLE welfare_enrollments ENABLE ROW LEVEL SECURITY;
 -- Federation admins see all cooperatives in their federation.
 -- Society admins see only their own cooperative.
 
+DROP POLICY IF EXISTS cooperative_isolation ON cooperative_societies;
 CREATE POLICY cooperative_isolation ON cooperative_societies
   USING (
     -- Federation admin: sees all cooperatives in their federation
@@ -51,24 +52,28 @@ CREATE POLICY cooperative_isolation ON cooperative_societies
 -- ── Workers ────────────────────────────────────────────────
 -- Scoped by cooperative_id
 
+DROP POLICY IF EXISTS worker_isolation ON workers;
 CREATE POLICY worker_isolation ON workers
   USING (cooperative_id = current_cooperative_id());
 
 -- ── Customers ──────────────────────────────────────────────
 -- Scoped by cooperative_id
 
+DROP POLICY IF EXISTS customer_isolation ON customers;
 CREATE POLICY customer_isolation ON customers
   USING (cooperative_id = current_cooperative_id());
 
 -- ── Service Requests ───────────────────────────────────────
 -- Scoped by cooperative_id
 
+DROP POLICY IF EXISTS service_request_isolation ON service_requests;
 CREATE POLICY service_request_isolation ON service_requests
   USING (cooperative_id = current_cooperative_id());
 
 -- ── Jobs ───────────────────────────────────────────────────
 -- Scoped by cooperative_id
 
+DROP POLICY IF EXISTS job_isolation ON jobs;
 CREATE POLICY job_isolation ON jobs
   USING (cooperative_id = current_cooperative_id());
 
@@ -76,6 +81,7 @@ CREATE POLICY job_isolation ON jobs
 -- Payments are accessed through their job, which is already scoped.
 -- Additional policy ensures direct payment queries are also isolated.
 
+DROP POLICY IF EXISTS payment_isolation ON payments;
 CREATE POLICY payment_isolation ON payments
   USING (
     job_id IN (
@@ -86,6 +92,7 @@ CREATE POLICY payment_isolation ON payments
 -- ── Ratings ────────────────────────────────────────────────
 -- Ratings are accessed through their job.
 
+DROP POLICY IF EXISTS rating_isolation ON ratings;
 CREATE POLICY rating_isolation ON ratings
   USING (
     job_id IN (
@@ -96,6 +103,7 @@ CREATE POLICY rating_isolation ON ratings
 -- ── Disputes ───────────────────────────────────────────────
 -- Disputes are accessed through their job.
 
+DROP POLICY IF EXISTS dispute_isolation ON disputes;
 CREATE POLICY dispute_isolation ON disputes
   USING (
     job_id IN (
@@ -106,6 +114,7 @@ CREATE POLICY dispute_isolation ON disputes
 -- ── Welfare Enrollments ────────────────────────────────────
 -- Accessed through worker, which is cooperative-scoped.
 
+DROP POLICY IF EXISTS welfare_enrollment_isolation ON welfare_enrollments;
 CREATE POLICY welfare_enrollment_isolation ON welfare_enrollments
   USING (
     worker_id IN (

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -13,8 +15,11 @@ import {
   ActivityIcon,
 } from '../components/icons';
 import { SERVICE_CATEGORIES } from '../data/mock-data';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function HomePage() {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-20 pb-20">
       {/* 1. Hero Section */}
@@ -23,16 +28,16 @@ export default function HomePage() {
           <div className="max-w-3xl space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
               <ShieldCheckIcon className="w-4 h-4" />
-              <span>Cooperative-Owned Digital Public Marketplace</span>
+              <span>{t('hero.badge')}</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-tight">
-              Fair Wages for Artisans. <br />
-              <span className="text-emerald-400">Trusted Services for Homes.</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-tight text-white">
+              <span className="text-white">{t('hero.title1')}</span> <br />
+              <span className="text-emerald-400">{t('hero.title2')}</span>
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl">
-              BharatGig eliminates middleman commissions by connecting households directly with certified cooperative guild workers. Governed by registered cooperative societies and state federations.
+            <p className="text-base sm:text-lg text-slate-200 leading-relaxed max-w-2xl">
+              {t('hero.desc')}
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-4">
@@ -40,7 +45,7 @@ export default function HomePage() {
                 href="/booking"
                 className="px-6 py-3.5 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-sm shadow-md transition flex items-center gap-2"
               >
-                <span>Book a Verified Service</span>
+                <span>{t('hero.ctaBook')}</span>
                 <ArrowRightIcon className="w-4 h-4" />
               </Link>
 
@@ -48,7 +53,7 @@ export default function HomePage() {
                 href="/for-workers"
                 className="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/20 transition"
               >
-                Join as a Guild Worker
+                {t('hero.ctaJoin')}
               </Link>
             </div>
 
@@ -56,15 +61,15 @@ export default function HomePage() {
             <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-700/60 max-w-xl">
               <div>
                 <p className="text-2xl font-black font-heading text-white">100%</p>
-                <p className="text-xs text-slate-400">Direct Worker Payout</p>
+                <p className="text-xs text-slate-400">{t('stats.payout')}</p>
               </div>
               <div>
                 <p className="text-2xl font-black font-heading text-emerald-400">3,400+</p>
-                <p className="text-xs text-slate-400">Verified Artisans</p>
+                <p className="text-xs text-slate-400">{t('stats.workers')}</p>
               </div>
               <div>
                 <p className="text-2xl font-black font-heading text-white">18</p>
-                <p className="text-xs text-slate-400">Audited Societies</p>
+                <p className="text-xs text-slate-400">{t('stats.societies')}</p>
               </div>
             </div>
           </div>
@@ -75,16 +80,16 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#059669]">Essential Home Trades</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#059669]">{t('section.tradesTag')}</span>
             <h2 className="text-2xl sm:text-3xl font-bold font-heading text-[#0E2150] mt-1">
-              Popular Service Guilds
+              {t('section.tradesTitle')}
             </h2>
           </div>
           <Link
             href="/services"
             className="text-xs font-bold text-[#0E2150] hover:text-[#059669] flex items-center gap-1.5 transition"
           >
-            <span>View all 4 service bands</span>
+            <span>{t('section.viewAll')}</span>
             <ArrowRightIcon className="w-4 h-4" />
           </Link>
         </div>
@@ -149,7 +154,7 @@ export default function HomePage() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
-              <div className="w-9 h-9 rounded-full bg-navy-100 text-[#0E2150] font-bold flex items-center justify-center text-sm font-heading">
+              <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-900 font-bold flex items-center justify-center text-sm font-heading">
                 2
               </div>
               <h3 className="font-heading font-bold text-base text-[#0E2150]">Direct Dispatch & Work Completion</h3>
@@ -174,40 +179,40 @@ export default function HomePage() {
       {/* 4. Why Choose BharatGig (4 Pillars) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#059669]">Cooperative Advantage</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#059669]">{t('why.tag')}</span>
           <h2 className="text-2xl sm:text-3xl font-bold font-heading text-[#0E2150]">
-            Why Choose BharatGig?
+            {t('why.title')}
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="p-6 rounded-xl border border-slate-200 bg-white space-y-2.5">
             <ShieldCheckIcon className="w-6 h-6 text-emerald-600" />
-            <h3 className="font-heading font-bold text-sm text-[#0E2150]">Aadhaar Verified KYC</h3>
+            <h3 className="font-heading font-bold text-sm text-[#0E2150]">{t('why.card1.title')}</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Every artisan is verified by their local registered cooperative society before dispatch.
+              {t('why.card1.desc')}
             </p>
           </div>
 
           <div className="p-6 rounded-xl border border-slate-200 bg-white space-y-2.5">
             <RupeeIcon className="w-6 h-6 text-[#0E2150]" />
-            <h3 className="font-heading font-bold text-sm text-[#0E2150]">Fixed Fair Wage Bands</h3>
+            <h3 className="font-heading font-bold text-sm text-[#0E2150]">{t('why.card2.title')}</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              No hidden surge pricing or platform gouging. Standardized rates decided by guild bylaws.
+              {t('why.card2.desc')}
             </p>
           </div>
 
           <div className="p-6 rounded-xl border border-slate-200 bg-white space-y-2.5">
             <BuildingIcon className="w-6 h-6 text-navy-600" />
-            <h3 className="font-heading font-bold text-sm text-[#0E2150]">Democratic Governance</h3>
+            <h3 className="font-heading font-bold text-sm text-[#0E2150]">{t('why.card3.title')}</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Workers co-own the cooperative society and elect their leadership. Zero venture extraction.
+              {t('why.card3.desc')}
             </p>
           </div>
 
           <div className="p-6 rounded-xl border border-slate-200 bg-white space-y-2.5">
             <HeartPulseIcon className="w-6 h-6 text-rose-600" />
-            <h3 className="font-heading font-bold text-sm text-[#0E2150]">Worker Welfare Built-in</h3>
+            <h3 className="font-heading font-bold text-sm text-[#0E2150]">Social Security & Insurance</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
               Every job funds PMSBY accident insurance, family medical cover, and NSDC skill upgrades.
             </p>
@@ -301,24 +306,24 @@ export default function HomePage() {
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-[#0E2150] rounded-2xl p-8 sm:p-12 text-center text-white space-y-6 relative overflow-hidden">
           <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-            <h2 className="text-2xl sm:text-4xl font-black font-heading tracking-tight">
-              Ready to experience cooperative-first home services?
+            <h2 className="text-2xl sm:text-4xl font-bold font-heading tracking-tight text-white">
+              {t('cta.title')}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Book a verified electrician, plumber, cleaner, or caregiver today and support local cooperative livelihoods.
+            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+              {t('cta.desc')}
             </p>
             <div className="pt-2 flex flex-wrap items-center justify-center gap-4">
               <Link
                 href="/booking"
                 className="px-6 py-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-sm shadow-md transition"
               >
-                Book a Service Now
+                {t('cta.bookNow')}
               </Link>
               <Link
                 href="/login"
                 className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/20 transition"
               >
-                Sign In / Role Switcher
+                {t('nav.signIn')} / {t('nav.roleSwitcher')}
               </Link>
             </div>
           </div>
