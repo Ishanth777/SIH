@@ -1,4 +1,5 @@
-import { ServiceCategory, WorkerProfile, CooperativeSociety, Federation, Booking, DisputeRecord, WelfareScheme } from '../types/platform';
+import { ServiceCategory, WorkerProfile, CooperativeSociety, Federation, Booking, DisputeRecord, WelfareScheme, JobStatus } from '../types/platform';
+export type { ServiceCategory, WorkerProfile, CooperativeSociety, Federation, Booking, DisputeRecord, WelfareScheme, JobStatus };
 
 export const FEDERATION_DATA: Federation = {
   id: 'fed-ka-01',

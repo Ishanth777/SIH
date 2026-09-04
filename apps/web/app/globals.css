@@ -12,13 +12,19 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-    color: #0D1829;
+    color: inherit;
   }
 }
 
 @layer components {
+
   /* Buttons */
   .btn-primary {
     background: linear-gradient(135deg, #0E2150 0%, #1A3470 100%);
@@ -29,6 +35,7 @@
     font-weight: 700;
     transition: all 0.18s ease;
   }
+
   .btn-primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(14, 33, 80, 0.35);
@@ -43,6 +50,7 @@
     font-weight: 700;
     transition: all 0.18s ease;
   }
+
   .btn-action:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(5, 150, 105, 0.40);
@@ -57,6 +65,7 @@
     font-weight: 700;
     transition: all 0.18s ease;
   }
+
   .btn-outline:hover {
     background-color: #F8FAFC;
     border-color: #CBD5E1;
@@ -70,6 +79,7 @@
     font-weight: 700;
     transition: all 0.18s ease;
   }
+
   .btn-ghost:hover {
     color: #0D1829;
     background-color: #F1F5F9;
@@ -84,6 +94,7 @@
     padding: 24px;
     transition: all 0.18s ease;
   }
+
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(14, 33, 80, 0.08);
@@ -99,6 +110,7 @@
     font-family: 'Inter', sans-serif;
     transition: all 0.18s ease;
   }
+
   .input-base:focus {
     outline: none;
     border-color: #0E2150;

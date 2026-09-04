@@ -14,8 +14,12 @@ import {
   ZapIcon,
 } from '@/components/icons';
 
+import { useLanguage } from '@/context/LanguageContext';
+import { addBooking } from '@/data/bookings-store';
+
 export default function CustomerBookingPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [catalog, setCatalog] = useState<ServiceCatalogItem[]>([
     {
@@ -69,15 +73,19 @@ export default function CustomerBookingPage() {
   const [fetchingCatalog, setFetchingCatalog] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getApiUrl = (endpoint: string) => {
+    const raw = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const hasApi = raw.endsWith('/api');
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    return hasApi ? `${raw}${path}` : `${raw}/api${path}`;
+  };
+
   useEffect(() => {
     async function loadCatalog() {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/services-catalog`,
-          {
-            headers: { 'Content-Type': 'application/json' },
-          },
-        );
+        const res = await fetch(getApiUrl('/services-catalog'), {
+          headers: { 'Content-Type': 'application/json' },
+        });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
@@ -97,45 +105,61 @@ export default function CustomerBookingPage() {
     setError(null);
     setLoading(true);
 
+    const activeService = catalog.find((c) => c.id === selectedCatalogId) || catalog[0];
+    const artisanMap: Record<string, { name: string; phone: string; guild: string }> = {
+      ELECTRICIAN: { name: 'Karthik Raghavan (NSQF Level 4)', phone: '+91 98451 44521', guild: 'Bangalore South Labour Cooperative #04' },
+      PLUMBER: { name: 'Ramesh Kumar (Guild Master NSQF-4)', phone: '+91 98451 23456', guild: 'Bangalore Central Plumbers Guild #12' },
+      CLEANER: { name: 'Pooja Devi (Sanitation Specialist)', phone: '+91 98451 88902', guild: 'Karnataka Urban Sanitation Cooperative' },
+      CAREGIVER: { name: 'Sunita Bai (Senior Care Specialist)', phone: '+91 98451 33190', guild: 'Bangalore Community Healthcare Guild' },
+    };
+
+    const chosenArtisan = artisanMap[activeService.category] || artisanMap.PLUMBER;
+    const computedAmount = (activeService.baseRateMin || 250) * (Number(estimatedHours) || 2);
+
+    // 1. Create and persist booking immediately
+    const newBooking = addBooking({
+      serviceName: activeService.name,
+      category: activeService.category as any,
+      urgency: requestType,
+      customerName: 'Anup Sharma',
+      customerPhone: '+91 98451 98210',
+      workerName: chosenArtisan.name,
+      cooperativeName: chosenArtisan.guild,
+      scheduledDate: new Date().toLocaleDateString('en-GB'),
+      scheduledTime: requestType === 'EMERGENCY' ? 'Immediate (15m)' : scheduledAt || '10:00 AM',
+      address: address || 'Jayanagar 4th Block, Bengaluru, Karnataka',
+      amount: computedAmount,
+      status: 'IN_PROGRESS',
+    });
+
+    const payload = {
+      cooperativeId:
+        localStorage.getItem('cooperativeId') || 'f3d0e377-6262-4357-9d7e-07a5180632b4',
+      serviceCatalogId: selectedCatalogId,
+      type: requestType,
+      description: description || 'Cooperative service dispatch request',
+      address,
+      latitude,
+      longitude,
+      scheduledAt: requestType === 'SCHEDULED' && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      estimatedHours: Number(estimatedHours) || 2,
+    };
+
     try {
-      const payload = {
-        cooperativeId:
-          localStorage.getItem('cooperativeId') || 'f3d0e377-6262-4357-9d7e-07a5180632b4',
-        serviceCatalogId: selectedCatalogId,
-        type: requestType,
-        description,
-        address,
-        latitude,
-        longitude,
-        scheduledAt: requestType === 'SCHEDULED' && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
-        estimatedHours: Number(estimatedHours),
-      };
-
       const token = localStorage.getItem('accessToken');
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/requests`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
+      fetch(getApiUrl('/requests'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      );
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    } catch {}
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to submit service request');
-      }
-
-      const createdRequest = await res.json();
-      router.push(`/request/${createdRequest.id}/matching`);
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong while booking.');
-    } finally {
-      setLoading(false);
-    }
+    // 2. Direct route to Live Tracking (NO chatbot interruption)
+    router.push(`/job-tracking/${newBooking.id}`);
+    setLoading(false);
   };
 
   const selectedService = catalog.find((c) => c.id === selectedCatalogId) || catalog[0];

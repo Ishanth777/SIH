@@ -4,18 +4,21 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MenuIcon, XIcon, ShieldCheckIcon } from '../icons';
+import { LanguageSelector } from '../common/LanguageSelector';
+import { useLanguage } from '../../context/LanguageContext';
 
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   const navLinks = [
-    { label: 'Home', href: '/' },
-    { label: 'Explore Services', href: '/services' },
-    { label: 'How It Works', href: '/how-it-works' },
-    { label: 'For Workers', href: '/for-workers' },
-    { label: 'For Cooperatives', href: '/for-cooperatives' },
-    { label: 'About', href: '/about' },
+    { key: 'nav.home', label: t('nav.home'), href: '/' },
+    { key: 'nav.services', label: t('nav.services'), href: '/services' },
+    { key: 'nav.howItWorks', label: t('nav.howItWorks'), href: '/how-it-works' },
+    { key: 'nav.forWorkers', label: t('nav.forWorkers'), href: '/for-workers' },
+    { key: 'nav.forCooperatives', label: t('nav.forCooperatives'), href: '/for-cooperatives' },
+    { key: 'nav.about', label: t('nav.about'), href: '/about' },
   ];
 
   return (
@@ -27,9 +30,9 @@ export function Navbar() {
             BG
           </div>
           <div>
-            <span className="font-heading font-black text-lg tracking-tight text-[#0E2150]">BharatGig</span>
+            <span className="font-heading font-black text-lg tracking-tight text-[#0E2150]">{t('brand.name')}</span>
             <span className="block text-[9px] font-bold text-[#059669] tracking-wider uppercase -mt-0.5">
-              Cooperative Marketplace
+              {t('brand.subtitle')}
             </span>
           </div>
         </Link>
@@ -54,22 +57,24 @@ export function Navbar() {
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSelector />
           <Link
             href="/login"
             className="text-xs font-bold text-[#0E2150] hover:text-[#1A3470] px-3.5 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
           >
-            Sign In
+            {t('nav.signIn')}
           </Link>
           <Link
             href="/booking"
             className="text-xs font-bold text-white px-4 py-2 rounded-lg bg-[#059669] hover:bg-[#047857] shadow-sm transition"
           >
-            Book Service
+            {t('nav.bookService')}
           </Link>
         </div>
 
         {/* Mobile Menu Toggle */}
         <div className="md:hidden flex items-center gap-2">
+          <LanguageSelector variant="compact" />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -103,14 +108,14 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="text-center text-xs font-bold py-2.5 rounded-lg border border-slate-200 text-[#0E2150]"
             >
-              Sign In / Role Switcher
+              {t('nav.signIn')} / {t('nav.roleSwitcher')}
             </Link>
             <Link
               href="/booking"
               onClick={() => setMobileMenuOpen(false)}
               className="text-center text-xs font-bold py-2.5 rounded-lg bg-[#059669] text-white"
             >
-              Book Service
+              {t('nav.bookService')}
             </Link>
           </div>
         </div>

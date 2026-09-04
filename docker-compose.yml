@@ -1,10 +1,10 @@
 # ============================================================
-# Cooperative Labour Marketplace — Infrastructure & Full Stack
+# Cooperative Labour Marketplace — Full Stack Docker Compose
 # ============================================================
 # Usage:
-#   docker compose -f infra/docker/docker-compose.yml up --build -d
-#   docker compose -f infra/docker/docker-compose.yml ps
-#   docker compose -f infra/docker/docker-compose.yml logs -f
+#   docker compose up --build -d
+#   docker compose ps
+#   docker compose logs -f
 # ============================================================
 
 services:
@@ -21,7 +21,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-coop_marketplace}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts/01-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
+      - ./infra/docker/init-scripts/01-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coop_user} -d ${POSTGRES_DB:-coop_marketplace}"]
       interval: 5s
@@ -89,7 +89,7 @@ services:
   # ── AI Demand Forecasting Microservice (FastAPI) ────────────
   forecasting:
     build:
-      context: ../../apps/forecasting
+      context: apps/forecasting
       dockerfile: Dockerfile
     container_name: coop-forecasting
     restart: unless-stopped
@@ -106,7 +106,7 @@ services:
   # ── Backend API (NestJS + Prisma) ───────────────────────────
   api:
     build:
-      context: ../..
+      context: .
       dockerfile: apps/api/Dockerfile
     container_name: coop-api
     restart: unless-stopped
@@ -146,7 +146,7 @@ services:
   # ── Web Client (Next.js 14) ──────────────────────────────────
   web:
     build:
-      context: ../..
+      context: .
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3000

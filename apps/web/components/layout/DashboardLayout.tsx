@@ -1,9 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Role } from '../../types/platform';
 import { AppSidebar } from './AppSidebar';
-import { BellIcon, ShieldCheckIcon } from '../icons';
+import { ShieldCheckIcon, BotIcon } from '../icons';
+import { LanguageSelector } from '../common/LanguageSelector';
+import { WorkerRecommendationChatbot } from '../matching/WorkerRecommendationChatbot';
 import Link from 'next/link';
 
 interface DashboardLayoutProps {
@@ -25,13 +27,27 @@ export function DashboardLayout({
   actions,
   children,
 }: DashboardLayoutProps) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showAiChatbot, setShowAiChatbot] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
-      {/* Sidebar */}
-      <AppSidebar role={role} userName={userName} userSubtitle={userSubtitle} />
+      {/* Sidebar with collapse toggle */}
+      <AppSidebar
+        role={role}
+        userName={userName}
+        userSubtitle={userSubtitle}
+        collapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onOpenAiAssistant={() => setShowAiChatbot(true)}
+      />
 
-      {/* Main Content Area */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+      {/* Main Content Area with Dynamic Padding */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+          isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+        }`}
+      >
         {/* Top Navbar */}
         <header className="h-16 bg-white border-b border-slate-200 px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
@@ -43,6 +59,20 @@ export function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Sahayak AI Quick Launcher */}
+            <button
+              type="button"
+              onClick={() => setShowAiChatbot(true)}
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#0E2150] to-[#1A3470] text-white text-xs font-bold shadow-xs hover:opacity-90 transition"
+              title="Open Sahayak AI Matcher"
+            >
+              <BotIcon className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Sahayak AI</span>
+            </button>
+
+            {/* Language Selector */}
+            <LanguageSelector />
+
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
               <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-600" />
               <span>Cooperative Verified Session</span>
@@ -72,6 +102,14 @@ export function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Sahayak AI Chatbot Modal */}
+      {showAiChatbot && (
+        <WorkerRecommendationChatbot
+          isOpen={showAiChatbot}
+          onClose={() => setShowAiChatbot(false)}
+        />
+      )}
     </div>
   );
 }
